@@ -38,6 +38,6 @@ if __name__ == '__main__':
     print("=" * 60)
     print("股票数据API服务启动")
     print("=" * 60)
-    print("访问 http://localhost:5000 查看API文档")
+    print("访问 http://localhost:5001 查看API文档")
     print("=" * 60)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5001, debug=True)

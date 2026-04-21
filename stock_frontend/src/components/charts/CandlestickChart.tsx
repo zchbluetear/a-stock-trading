@@ -25,7 +25,7 @@ export default function CandlestickChart({ code, buyZones, sellZones, indicators
   const { data: dailyKlineData } = useQuery({
     queryKey: ['daily-kline', code],
     queryFn: async () => {
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000';
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5001';
       const response = await fetch(`${apiUrl}/api/sina/daily/${code}?count=240`);
       if (!response.ok) {
         throw new Error('Failed to fetch daily K-line data');
@@ -53,7 +53,7 @@ export default function CandlestickChart({ code, buyZones, sellZones, indicators
   const { data: minute1KlineData } = useQuery({
     queryKey: ['minute1-kline', code],
     queryFn: async () => {
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000';
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5001';
       const response = await fetch(`${apiUrl}/api/sina/timeline/${code}`);
       if (!response.ok) {
         throw new Error('Failed to fetch timeline data');
@@ -108,7 +108,7 @@ export default function CandlestickChart({ code, buyZones, sellZones, indicators
   const { data: minute5KlineData } = useQuery({
     queryKey: ['minute5-kline', code],
     queryFn: async () => {
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000';
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5001';
       const response = await fetch(`${apiUrl}/api/sina/minute/${code}?scale=5&datalen=240`);
       if (!response.ok) {
         throw new Error('Failed to fetch 5-minute K-line data');
@@ -137,7 +137,7 @@ export default function CandlestickChart({ code, buyZones, sellZones, indicators
   const { data: minute30KlineData } = useQuery({
     queryKey: ['minute30-kline', code],
     queryFn: async () => {
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000';
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5001';
       const response = await fetch(`${apiUrl}/api/sina/minute/${code}?scale=30&datalen=240`);
       if (!response.ok) {
         throw new Error('Failed to fetch 30-minute K-line data');
