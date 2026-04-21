@@ -172,7 +172,7 @@ export default function Strategy() {
               </div>
             )}
           </div>
-          
+
           {/* 参数设置 */}
           <div className="mb-4 p-3 bg-blue-600/50 rounded-lg">
             <div className="flex items-center justify-between">
@@ -193,7 +193,7 @@ export default function Strategy() {
               </select>
             </div>
           </div>
-          
+
           {isLoading ? (
             <div className="space-y-2">
               <div className="h-4 w-32 bg-blue-400/50 rounded animate-pulse"></div>
@@ -227,7 +227,6 @@ export default function Strategy() {
           <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
-          <span>固定策略筛选，仅供参考学习。股市有风险，投资需谨慎，不构成投资建议。</span>
         </p>
       </div>
 
@@ -442,33 +441,30 @@ export default function Strategy() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     onClick={() => setMultiMode('fast')}
-                    className={`px-3 py-2 rounded-lg text-sm border ${
-                      multiMode === 'fast'
+                    className={`px-3 py-2 rounded-lg text-sm border ${multiMode === 'fast'
                         ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
                         : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
-                    }`}
+                      }`}
                   >
                     快速模式
                     <div className="text-xs opacity-70">思考1 / 辩论1</div>
                   </button>
                   <button
                     onClick={() => setMultiMode('balanced')}
-                    className={`px-3 py-2 rounded-lg text-sm border ${
-                      multiMode === 'balanced'
+                    className={`px-3 py-2 rounded-lg text-sm border ${multiMode === 'balanced'
                         ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
                         : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
-                    }`}
+                      }`}
                   >
                     均衡模式
                     <div className="text-xs opacity-70">思考2 / 辩论1</div>
                   </button>
                   <button
                     onClick={() => setMultiMode('deep')}
-                    className={`px-3 py-2 rounded-lg text-sm border ${
-                      multiMode === 'deep'
+                    className={`px-3 py-2 rounded-lg text-sm border ${multiMode === 'deep'
                         ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
                         : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
-                    }`}
+                      }`}
                   >
                     深入模式
                     <div className="text-xs opacity-70">思考3 / 辩论2</div>
