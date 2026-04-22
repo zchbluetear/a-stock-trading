@@ -52,18 +52,16 @@ class StrongStockMonitor:
         """获取当天的强势股列表"""
         today_str = datetime.now().strftime("%Y-%m-%d")
         
-        # 如果今天已经获取过，直接返回缓存（一天获取一次即可，强势股基于前两日数据）
-        if self.strong_stocks_date == today_str and self.strong_stocks:
-            return self.strong_stocks
-            
+        # 移除缓存逻辑，因为盘中如果有股票炸板（取消涨停），强势股列表会动态变化
+        # 因此每次轮询都应该获取最新的强势股列表
         try:
             print(f"[{datetime.now().strftime('%H:%M:%S')}] [Monitor] 正在获取强势股列表...")
             # 通过本地 API 获取强势股数据
             response = requests.get('http://127.0.0.1:5001/api/strategy/strong_stocks', timeout=30)
             if response.status_code == 200:
                 data = response.json()
-                if 'data' in data:
-                    self.strong_stocks = data['data']
+                if 'stocks' in data:
+                    self.strong_stocks = data['stocks']
                     self.strong_stocks_date = today_str
                     print(f"[{datetime.now().strftime('%H:%M:%S')}] [Monitor] 获取到 {len(self.strong_stocks)} 只强势股")
                     return self.strong_stocks
@@ -83,7 +81,8 @@ class StrongStockMonitor:
         for stock in stocks:
             code = stock.get('code')
             name = stock.get('name')
-            
+            print("开始检查股票代码：", code)
+            print("当前已经预警的股票代码：", self.alerted_today)
             # 如果今天已经预警过，跳过
             if code in self.alerted_today:
                 continue
@@ -142,8 +141,9 @@ class StrongStockMonitor:
                     print(f"[{datetime.now().strftime('%H:%M:%S')}] [Monitor] 新的一个交易日，已重置预警记录。")
                 
                 # 只在交易时间进行监控
-                if self._is_trading_time():
-                    self._check_oversold()
+                # if self._is_trading_time():
+                print("开始检查")
+                self._check_oversold()
                 
             except Exception as e:
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] [Monitor] 监控循环发生异常: {e}")
