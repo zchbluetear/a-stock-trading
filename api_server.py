@@ -31,10 +31,23 @@ def init_database():
     except Exception as e:
         print(f"[初始化] 数据库初始化失败: {e}")
 
+def start_monitor_service():
+    """启动强势股监控服务"""
+    try:
+        from monitor_service import start_monitor
+        # 在多进程模式下(如 debug=True 的 auto-reloader)，避免启动两次
+        # Flask 的 Werkzeug reloader 启动时会设置 WERKZEUG_RUN_MAIN=true
+        import os
+        if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.debug:
+            start_monitor()
+    except Exception as e:
+        print(f"[初始化] 监控服务启动失败: {e}")
+
 register_routes()
 init_database()
 
 if __name__ == '__main__':
+    start_monitor_service()
     print("=" * 60)
     print("股票数据API服务启动")
     print("=" * 60)
