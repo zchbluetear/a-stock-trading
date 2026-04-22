@@ -107,7 +107,7 @@ class StrongStockMonitor:
         """触发预警"""
         print(f"[{datetime.now().strftime('%H:%M:%S')}] [Monitor] 触发预警! {name}({code}) 跌幅 {change_percent:.2f}%")
         
-        title = f"📉 强势股超卖预警: {name}"
+        title = f"📉强势股超卖: {name}"
         content = f"""
         <h3>⚠️ 强势股进入深水区</h3>
         <ul>
@@ -134,6 +134,9 @@ class StrongStockMonitor:
             try:
                 today_str = datetime.now().strftime("%Y-%m-%d")
                 
+                print("last_check_date:", self.last_check_date)
+                print("today_str:", today_str)
+
                 # 跨天重置预警记录
                 if self.last_check_date != today_str:
                     self.alerted_today.clear()
@@ -141,9 +144,8 @@ class StrongStockMonitor:
                     print(f"[{datetime.now().strftime('%H:%M:%S')}] [Monitor] 新的一个交易日，已重置预警记录。")
                 
                 # 只在交易时间进行监控
-                # if self._is_trading_time():
-                print("开始检查")
-                self._check_oversold()
+                if self._is_trading_time():
+                    self._check_oversold()
                 
             except Exception as e:
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] [Monitor] 监控循环发生异常: {e}")
