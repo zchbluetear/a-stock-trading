@@ -25,7 +25,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
                 <Link to="/" className="text-xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                  三千若水
+                  静水流深
                 </Link>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
