@@ -361,7 +361,7 @@ export default function AIDebate() {
           <div className="text-gray-500">报告生成中...</div>
         ) : reportHtml ? (
           <div
-            className="markdown-body bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700"
+            className="markdown-body bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-200 p-4 rounded-lg border border-gray-200 dark:border-gray-700"
             dangerouslySetInnerHTML={{ __html: reportHtml }}
           />
         ) : (
