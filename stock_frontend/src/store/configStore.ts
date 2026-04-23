@@ -24,7 +24,7 @@ interface ConfigState {
 export const useConfigStore = create<ConfigState>()(
   persist(
     (set) => ({
-      apiBaseURL: 'http://127.0.0.1:5001',
+      apiBaseURL: import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5001`,
       openaiApiKey: '',
       deepseekApiKey: '',
       qwenApiKey: '',

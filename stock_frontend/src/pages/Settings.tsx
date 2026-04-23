@@ -13,7 +13,7 @@ const AI_PROVIDERS = [
 ];
 
 export default function Settings() {
-  const [apiBaseURL, setApiBaseURL] = useState('http://127.0.0.1:5001');
+  const [apiBaseURL, setApiBaseURL] = useState(import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5001`);
   const [selectedProvider, setSelectedProvider] = useState('openai');
   const [apiKey, setApiKey] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
@@ -138,7 +138,7 @@ export default function Settings() {
               type="text"
               value={apiBaseURL}
               onChange={(e) => setApiBaseURL(e.target.value)}
-              placeholder="http://127.0.0.1:5001"
+              placeholder={`${window.location.protocol}//${window.location.hostname}:5001`}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
             />
           </div>
