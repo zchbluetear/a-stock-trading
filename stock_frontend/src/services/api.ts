@@ -2,7 +2,8 @@
  * API服务 - 与后端通信
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5001';
+// 动态获取当前主机名，这样无论是本地调试(localhost)还是云服务器部署(公网IP)，都不需要手动修改
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5001`;
 
 export interface StockRealtime {
   code: string;
