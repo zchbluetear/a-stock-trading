@@ -13,6 +13,7 @@ export default function Layout({ children }: LayoutProps) {
     { path: '/watchlist', label: '自选' },
     { path: '/tasks', label: '任务' },
     { path: '/strategy', label: '策略' },
+    { path: '/auction', label: '竞价' },
     { path: '/settings', label: '配置' },
   ];
 
