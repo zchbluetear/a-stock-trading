@@ -53,3 +53,14 @@ def send_wechat_notification(title, content, template="html"):
 if __name__ == "__main__":
     # 测试代码
     send_wechat_notification("超卖预警测试", "这是一条来自股票分析系统的测试消息。", "txt")
+
+def send_email_notification(to_addr, title, content):
+    """
+    发送邮件通知
+    此函数为模拟发送，因为没有配置实际的 SMTP 服务器。
+    """
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] [Notification] 准备发送邮件到: {to_addr}")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] [Notification] 邮件标题: {title}")
+    # 实际应用中这里会调用 smtplib 连接服务器发送邮件
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] [Notification] 邮件发送成功 (模拟)")
+    return {"success": True, "message": "邮件发送成功"}

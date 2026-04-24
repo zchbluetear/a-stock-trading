@@ -1950,3 +1950,21 @@ def register_routes(app):
             import traceback
             print(f"[API] 错误堆栈: {traceback.format_exc()}")
             return jsonify({'error': '筛选强势股失败', 'message': error_msg}), 500
+
+    @app.route('/api/auction/sectors')
+    def get_auction_sectors():
+        """获取集合竞价板块强度数据"""
+        from auction_scanner import get_auction_sector_data
+        try:
+            sectors = get_auction_sector_data()
+            response = jsonify({
+                'success': True,
+                'data': sectors,
+                'count': len(sectors)
+            })
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        except Exception as e:
+            print(f"获取集合竞价数据失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+

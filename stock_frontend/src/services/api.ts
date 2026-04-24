@@ -331,7 +331,16 @@ class StockAPI {
     });
     return data;
   }
+
+
+
+  // 集合竞价API
+  async getAuctionSectors(): Promise<any[]> {
+    const data = await this.request<{ success: boolean; data: any[] }>('/api/auction/sectors');
+    return data.data;
+  }
+
+
 }
 
 export const stockAPI = new StockAPI();
-
