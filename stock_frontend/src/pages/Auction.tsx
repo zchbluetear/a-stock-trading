@@ -17,6 +17,8 @@ export default function Auction() {
     queryKey: ['auction-sectors'],
     queryFn: () => stockAPI.getAuctionSectors(),
     refetchInterval: 10000, // 每10秒刷新一次
+    staleTime: 0, // 覆盖全局配置，竞价数据实时性高，不使用30秒缓存
+    refetchOnMount: 'always', // 保证每次切回这个页面都会立即触发接口请求
   });
 
   // 格式化金额
