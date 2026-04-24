@@ -15,7 +15,7 @@ def get_auction_sector_data():
     """
     try:
         # 东方财富行业板块数据接口
-        url = "http://85.push2.eastmoney.com/api/qt/clist/get"
+        url = "https://push2.eastmoney.com/api/qt/clist/get"
         params = {
             "pn": 1,
             "pz": 100,  # 获取前100个板块
