@@ -1892,41 +1892,83 @@ def register_routes(app):
             
             print(f"[API] 符合条件的强势股数量: {len(result_codes)}")
             
-            # 组装结果
+            # 组装结果（顺序获取实时行情 + 计算强度指标）
             result_stocks = []
             for code in result_codes:
-                # 从T-1数据中获取股票信息
                 t1_info = next((s for s in t1_early if s['code'] == code), None)
                 t2_info = next((s for s in t2_early if s['code'] == code), None)
-                
-                if t1_info:
-                    stock_data = {
-                        'code': code,
-                        'name': t1_info['name'],
-                        't1_limit_time': t1_info['first_limit_time'],
-                        't2_limit_time': t2_info['first_limit_time'] if t2_info else None,
-                        'consecutive_days': t1_info.get('consecutive_days', 0),
-                        'break_count': t1_info.get('break_count', 0),
-                        'industry': t1_info.get('industry', ''),
-                        'current_price': None,
-                        'change_percent': None,
-                        'volume': None,
-                        'amount': None,
-                    }
-                    
-                    # 获取当前实时行情
-                    try:
-                        realtime = get_realtime_data(code)
-                        if realtime:
-                            stock_data['current_price'] = realtime.get('current_price')
-                            stock_data['change_percent'] = realtime.get('change_percent')
-                            stock_data['volume'] = realtime.get('volume')
-                            stock_data['amount'] = realtime.get('amount')
-                    except Exception as e:
-                        print(f"[API] 获取 {code} 实时行情失败: {e}")
-                    
-                    result_stocks.append(stock_data)
-            
+                if not t1_info:
+                    continue
+
+                stock_data = {
+                    'code': code,
+                    'name': t1_info['name'],
+                    't1_limit_time': t1_info['first_limit_time'],
+                    't2_limit_time': t2_info['first_limit_time'] if t2_info else None,
+                    'consecutive_days': t1_info.get('consecutive_days', 0),
+                    'break_count': t1_info.get('break_count', 0),
+                    'industry': t1_info.get('industry', ''),
+                    'current_price': None,
+                    'change_percent': None,
+                    'volume': None,
+                    'amount': None,
+                    'strength_type': None,
+                    'amplitude_250': None,
+                    'breakout_60': None,
+                }
+
+                # 获取实时行情
+                try:
+                    realtime = get_realtime_data(code)
+                    if realtime:
+                        stock_data['current_price'] = realtime.get('current_price')
+                        stock_data['change_percent'] = realtime.get('change_percent')
+                        stock_data['volume'] = realtime.get('volume')
+                        stock_data['amount'] = realtime.get('amount')
+                except Exception as e:
+                    print(f"[API] 获取 {code} 实时行情失败: {e}")
+
+                # 用新浪日K线（get_daily_kline）计算强度类型/250日振幅/60日平台突破
+                # 强势股策略中：T日=今天，T-1=最近涨停日(df.iloc[-2])，T-2=前一涨停日(df.iloc[-3])
+                try:
+                    df = get_daily_kline(code, count=300)
+                    if df is not None and len(df) >= 10:
+                        # 强度指标应基于 T-1 日（最近一个涨停日）
+                        # iloc[-1] 是今天(T)，iloc[-2] 是昨天(T-1)，iloc[-3] 是前天(T-2)
+                        t1_row = df.iloc[-2]
+                        t2_row = df.iloc[-3]
+                        
+                        vol_shrink = t1_row['volume'] < t2_row['volume']
+                        is_t_shape = (
+                            t1_row['open'] == t1_row['high'] and
+                            t1_row['close'] == t1_row['high'] and
+                            t1_row['low'] < t1_row['high']
+                        )
+                        
+                        if vol_shrink and is_t_shape:
+                            stock_data['strength_type'] = 'T字缩量'
+                        elif is_t_shape:
+                            stock_data['strength_type'] = 'T字板'
+                        elif vol_shrink:
+                            stock_data['strength_type'] = '缩量板'
+                        else:
+                            stock_data['strength_type'] = '普通'
+
+                        high_250 = df['high'].tail(250).max()
+                        low_250 = df['low'].tail(250).min()
+                        if low_250 > 0:
+                            stock_data['amplitude_250'] = round(high_250 / low_250, 2)
+
+                        # 是否突破60日平台（T-1日收盘 vs T-1之前60天最高点）
+                        if len(df) >= 62:
+                            platform_60 = df['high'].iloc[-62:-2].max()
+                            stock_data['breakout_60'] = bool(t1_row['close'] > platform_60)
+                except Exception as e:
+                    print(f"[API] 计算 {code} 强度信息失败: {e}")
+
+
+                result_stocks.append(stock_data)
+
             print(f"[API] 返回强势股数据，共 {len(result_stocks)} 只")
             
             return jsonify({

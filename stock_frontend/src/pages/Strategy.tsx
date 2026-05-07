@@ -16,6 +16,9 @@ interface StrongStock {
   change_percent: number | null;
   volume: number | null;
   amount: number | null;
+  strength_type: string | null;
+  amplitude_250: number | null;
+  breakout_60: boolean | null;
 }
 
 interface StrongStocksResponse {
@@ -312,6 +315,15 @@ export default function Strategy() {
                     炸板
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    强度类型
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    250日振幅
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    突破60日平台
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     当前价
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -364,6 +376,40 @@ export default function Strategy() {
                           {stock.break_count}次
                         </span>
                       ) : '-'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm">
+                      {stock.strength_type ? (
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          stock.strength_type === 'T字缩量'
+                            ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+                            : stock.strength_type === 'T字板'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                            : stock.strength_type === '缩量板'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                            : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                        }`}>
+                          {stock.strength_type}
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {stock.amplitude_250 != null ? (
+                        <span className={stock.amplitude_250 >= 2.0 ? 'text-orange-500 font-medium' : ''}>
+                          {stock.amplitude_250}x
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm">
+                      {stock.breakout_60 === null ? '-'
+                        : stock.breakout_60 ? (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+                            ✓ 已突破
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                            未突破
+                          </span>
+                        )}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                       {stock.current_price ? `¥${stock.current_price.toFixed(2)}` : '-'}
