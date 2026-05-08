@@ -1890,15 +1890,35 @@ def register_routes(app):
             # 筛选出今天还没有涨停且未跌停的股票
             result_codes = common_codes - t_limit_codes - t_down_codes
             
-            print(f"[API] 符合条件的强势股数量: {len(result_codes)}")
+            # 过滤掉创业板(30开头)和科创板(68开头)股票
+            result_codes = {code for code in result_codes if not (code.startswith('30') or code.startswith('68'))}
             
-            # 组装结果（顺序获取实时行情 + 计算强度指标）
+            print(f"[API] 符合条件的强势股数量(过滤后): {len(result_codes)}")
+            
+            # 性能优化：预取板块数据，并在共振评分中复用 t_limit_stocks 来取代全市场快照
+            try:
+                import akshare as ak
+                df_sectors = ak.stock_board_industry_name_em()
+            except: 
+                df_sectors = None
+            
+            sector_cache = {}
+            from get_resonance_score import get_resonance_score
+
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+
+            # 优化查找效率
+            t1_early_map = {s['code']: s for s in t1_early}
+            t2_early_map = {s['code']: s for s in t2_early}
+
+            # 组装结果（并行获取实时行情 + 计算强度指标 + 计算共振）
             result_stocks = []
-            for code in result_codes:
-                t1_info = next((s for s in t1_early if s['code'] == code), None)
-                t2_info = next((s for s in t2_early if s['code'] == code), None)
+            
+            def worker(code):
+                t1_info = t1_early_map.get(code)
+                t2_info = t2_early_map.get(code)
                 if not t1_info:
-                    continue
+                    return None
 
                 stock_data = {
                     'code': code,
@@ -1966,8 +1986,31 @@ def register_routes(app):
                 except Exception as e:
                     print(f"[API] 计算 {code} 强度信息失败: {e}")
 
+                # 计算共振指标评分
+                try:
+                    res = get_resonance_score(
+                        code, 
+                        df_sectors=df_sectors, 
+                        target_sector=stock_data['industry'], 
+                        t_limit_stocks=t_limit_stocks
+                    )
+                    if res:
+                        stock_data['resonance_score'] = res.get('共振指数评分')
+                        stock_data['sector_name'] = res.get('所属板块')
+                        stock_data['sector_rank'] = res.get('板块排名')
+                        stock_data['sector_limit_ups'] = res.get('同板块涨停数')
+                        stock_data['market_up_count'] = res.get('大盘上涨家数')
+                except Exception as e:
+                    print(f"[API] 计算 {code} 共振指数失败: {e}")
 
-                result_stocks.append(stock_data)
+                return stock_data
+
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                futures = [executor.submit(worker, code) for code in result_codes]
+                for future in as_completed(futures):
+                    res = future.result()
+                    if res:
+                        result_stocks.append(res)
 
             print(f"[API] 返回强势股数据，共 {len(result_stocks)} 只")
             

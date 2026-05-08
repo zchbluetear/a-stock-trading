@@ -19,6 +19,11 @@ interface StrongStock {
   strength_type: string | null;
   amplitude_250: number | null;
   breakout_60: boolean | null;
+  resonance_score: number | null;
+  sector_name: string | null;
+  sector_rank: number | null;
+  sector_limit_ups: number | null;
+  market_up_count: number | null;
 }
 
 interface StrongStocksResponse {
@@ -300,7 +305,19 @@ export default function Strategy() {
                     名称
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    行业
+                    所属板块
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    板块排名
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    同板块涨停
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    大盘上涨
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    共振评分
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     T-1涨停
@@ -355,7 +372,49 @@ export default function Strategy() {
                       {stock.name}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {stock.industry || '-'}
+                      {stock.sector_name || stock.industry || '-'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {stock.sector_rank ? (
+                        <span className={stock.sector_rank <= 10 ? 'text-orange-500 font-bold' : ''}>
+                          {stock.sector_rank}
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {stock.sector_limit_ups != null ? (
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                          {stock.sector_limit_ups}家
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {stock.market_up_count != null ? (
+                        <span className={stock.market_up_count >= 3000 ? 'text-red-500' : ''}>
+                          {stock.market_up_count}
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm">
+                      {stock.resonance_score != null ? (
+                        <div className="flex flex-col">
+                          <span className={`text-lg font-bold ${
+                            stock.resonance_score >= 80 ? 'text-red-600 dark:text-red-400' : 
+                            stock.resonance_score >= 60 ? 'text-orange-500' : 'text-gray-500'
+                          }`}>
+                            {stock.resonance_score}
+                          </span>
+                          <div className="w-24 h-1 bg-gray-200 rounded-full overflow-hidden mt-1">
+                            <div 
+                              className={`h-full ${
+                                stock.resonance_score >= 80 ? 'bg-red-500' : 
+                                stock.resonance_score >= 60 ? 'bg-orange-400' : 'bg-gray-400'
+                              }`}
+                              style={{ width: `${stock.resonance_score}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      ) : '-'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {formatLimitTime(stock.t1_limit_time)}
