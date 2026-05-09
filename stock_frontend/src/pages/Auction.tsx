@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { stockAPI } from '../services/api';
 import { Link, useNavigate } from 'react-router-dom';
+import { useWatchlistStore } from '../store/watchlistStore';
 
 interface LimitUpStock {
   code: string;
@@ -55,6 +56,7 @@ export default function Auction() {
     try {
       await stockAPI.addWatchlist(code, name);
       setAddedMap((prev) => ({ ...prev, [code]: true }));
+      useWatchlistStore.getState().fetchWatchlist();
     } catch (e) {
       console.error('加入自选失败:', e);
       alert('加入自选失败');

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { stockAPI } from '../services/api';
+import { useWatchlistStore } from '../store/watchlistStore';
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -111,6 +112,7 @@ export default function Strategy() {
     try {
       await stockAPI.addWatchlist(code, name);
       setAddedMap((prev) => ({ ...prev, [code]: true }));
+      useWatchlistStore.getState().fetchWatchlist();
     } catch (e) {
       console.error('加入自选失败:', e);
       alert('加入自选失败');
