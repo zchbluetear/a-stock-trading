@@ -29,7 +29,7 @@ function getRefetchInterval(): number {
 }
 
 export default function Watchlist() {
-  const { items, loading, addStock, removeStock } = useWatchlistStore();
+  const { items, loading, addStock, removeStock, fetchWatchlist } = useWatchlistStore();
   const [codeInput, setCodeInput] = useState('');
   const [adding, setAdding] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
@@ -44,6 +44,10 @@ export default function Watchlist() {
     queryFn: () => stockAPI.getAgents(true),
     enabled: showMultiModal,
   });
+
+  useEffect(() => {
+    fetchWatchlist();
+  }, [fetchWatchlist]);
 
   useEffect(() => {
     if (showMultiModal && agents && agents.length > 0 && selectedAgentIds.length === 0) {
