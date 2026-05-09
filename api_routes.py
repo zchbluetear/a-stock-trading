@@ -1903,7 +1903,6 @@ def register_routes(app):
                 df_sectors = None
             
             sector_cache = {}
-            from get_resonance_score import get_resonance_score
 
             from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -1985,25 +1984,6 @@ def register_routes(app):
                             stock_data['breakout_60'] = bool(t1_row['close'] > platform_60)
                 except Exception as e:
                     print(f"[API] 计算 {code} 强度信息失败: {e}")
-
-                # 计算共振指标评分
-                try:
-                    res = get_resonance_score(
-                        code, 
-                        df_sectors=df_sectors, 
-                        target_sector=stock_data['industry'], 
-                        t_limit_stocks=t_limit_stocks
-                    )
-                    if res:
-                        stock_data['resonance_score'] = res.get('共振指数评分')
-                        stock_data['sector_name'] = res.get('所属板块')
-                        stock_data['sector_rank'] = res.get('板块排名')
-                        stock_data['sector_limit_ups'] = res.get('同板块涨停数')
-                        stock_data['market_up_count'] = res.get('大盘上涨家数')
-                except Exception as e:
-                    print(f"[API] 计算 {code} 共振指数失败: {e}")
-
-                return stock_data
 
             with ThreadPoolExecutor(max_workers=10) as executor:
                 futures = [executor.submit(worker, code) for code in result_codes]

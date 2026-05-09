@@ -31,7 +31,7 @@ export default function Auction() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">🔥 涨停股实时监控</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">涨停股实时监控</h1>
 
         <div className="flex items-center space-x-2">
           <button
@@ -82,16 +82,15 @@ export default function Auction() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                       <span className={`font-medium ${stock.change_percent > 0 ? 'text-red-600 dark:text-red-400' :
-                          stock.change_percent < 0 ? 'text-green-600 dark:text-green-400' :
-                            'text-gray-900 dark:text-white'
+                        stock.change_percent < 0 ? 'text-green-600 dark:text-green-400' :
+                          'text-gray-900 dark:text-white'
                         }`}>
                         {stock.change_percent ? stock.change_percent.toFixed(2) + '%' : '-'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                      <span className={`${
-                          stock.continuous_days > 2 ? 'font-bold text-red-600 dark:text-red-400' :
-                          stock.continuous_days > 0 ? 'text-red-600 dark:text-red-400' :
+                      <span className={`${stock.continuous_days > 2 ? 'font-bold text-red-600 dark:text-red-400' :
+                        stock.continuous_days > 0 ? 'text-red-600 dark:text-red-400' :
                           'text-gray-900 dark:text-white'
                         }`}>
                         {stock.continuous_days ? stock.continuous_days : '-'}
@@ -99,8 +98,8 @@ export default function Auction() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                       <span className={`font-medium ${stock.fund > 0 ? 'text-red-600 dark:text-red-400' :
-                          stock.fund < 0 ? 'text-green-600 dark:text-green-400' :
-                            'text-gray-900 dark:text-white'
+                        stock.fund < 0 ? 'text-green-600 dark:text-green-400' :
+                          'text-gray-900 dark:text-white'
                         }`}>
                         {formatAmount(stock.fund)}
                       </span>
