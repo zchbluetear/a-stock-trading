@@ -2,16 +2,19 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { stockAPI } from '../services/api';
 
-interface Sector {
+interface LimitUpStock {
+  code: string;
   name: string;
   change_percent: number;
-  five_min_change: number;
-  net_inflow: number;
-  lead_stock: string;
+  latest_price: number;
+  continuous_days: number;
+  fund: number;
+  first_time: string;
+  industry: string;
 }
 
 export default function Auction() {
-  const { data: sectors, isLoading, refetch } = useQuery<Sector[]>({
+  const { data: stocks, isLoading, refetch } = useQuery<LimitUpStock[]>({
     queryKey: ['auction-sectors'],
     queryFn: () => stockAPI.getAuctionSectors(),
     refetchInterval: 10000,
@@ -41,60 +44,72 @@ export default function Auction() {
         </div>
       </div>
 
-      {isLoading && !sectors ? (
+      {isLoading && !stocks ? (
         <div className="flex justify-center items-center h-64">
           <div className="text-gray-500 dark:text-gray-400">数据连接中或暂无数据...</div>
         </div>
-      ) : sectors && sectors.length > 0 ? (
+      ) : stocks && stocks.length > 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
                   <th className="px-6 py-3 text-center text-xs font-medium text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">排名</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">代码</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">股票名称</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">最新价</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">今日涨幅</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider font-bold">连板数</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">封板资金(亿)</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">首次封板</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-yellow-600 dark:text-yellow-400 uppercase tracking-wider">所属行业</th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {sectors.map((sector, index) => (
-                  <tr key={sector.name || index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                {stocks.map((stock, index) => (
+                  <tr key={stock.code || index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-cyan-600 dark:text-cyan-400 text-center">
                       {index + 1}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {stock.code}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
-                      {sector.name}
+                      {stock.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
+                      {stock.latest_price ? stock.latest_price.toFixed(2) : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                      <span className={`font-medium ${sector.change_percent > 0 ? 'text-red-600 dark:text-red-400' :
-                          sector.change_percent < 0 ? 'text-green-600 dark:text-green-400' :
+                      <span className={`font-medium ${stock.change_percent > 0 ? 'text-red-600 dark:text-red-400' :
+                          stock.change_percent < 0 ? 'text-green-600 dark:text-green-400' :
                             'text-gray-900 dark:text-white'
                         }`}>
-                        {sector.change_percent ? sector.change_percent.toFixed(2) + '%' : '-'}
+                        {stock.change_percent ? stock.change_percent.toFixed(2) + '%' : '-'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                       <span className={`${
-                          sector.five_min_change > 2 ? 'font-bold text-red-600 dark:text-red-400' :
-                          sector.five_min_change > 0 ? 'text-red-600 dark:text-red-400' :
+                          stock.continuous_days > 2 ? 'font-bold text-red-600 dark:text-red-400' :
+                          stock.continuous_days > 0 ? 'text-red-600 dark:text-red-400' :
                           'text-gray-900 dark:text-white'
                         }`}>
-                        {sector.five_min_change ? sector.five_min_change : '-'}
+                        {stock.continuous_days ? stock.continuous_days : '-'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                      <span className={`font-medium ${sector.net_inflow > 0 ? 'text-red-600 dark:text-red-400' :
-                          sector.net_inflow < 0 ? 'text-green-600 dark:text-green-400' :
+                      <span className={`font-medium ${stock.fund > 0 ? 'text-red-600 dark:text-red-400' :
+                          stock.fund < 0 ? 'text-green-600 dark:text-green-400' :
                             'text-gray-900 dark:text-white'
                         }`}>
-                        {formatAmount(sector.net_inflow)}
+                        {formatAmount(stock.fund)}
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400">
+                      {stock.first_time || '-'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-yellow-600 dark:text-yellow-400 font-medium">
-                      {sector.lead_stock || '-'}
+                      {stock.industry || '-'}
                     </td>
                   </tr>
                 ))}

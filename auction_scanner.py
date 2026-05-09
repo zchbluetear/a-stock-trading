@@ -29,11 +29,12 @@ def get_auction_sector_data():
             return []
             
         # 挑选核心监控列
-        cols = ['代码', '名称', '涨跌幅', '连板数', '封板资金', '所属行业']
+        cols = ['代码', '名称', '涨跌幅', '最新价', '连板数', '封板资金', '首次封板时间', '所属行业']
         df = df[cols].copy()
         
         # 强制转换数值类型，防止排序出错
         df['涨跌幅'] = pd.to_numeric(df['涨跌幅'], errors='coerce')
+        df['最新价'] = pd.to_numeric(df['最新价'], errors='coerce')
         df['连板数'] = pd.to_numeric(df['连板数'], errors='coerce')
         df['封板资金'] = pd.to_numeric(df['封板资金'], errors='coerce')
         
@@ -45,9 +46,11 @@ def get_auction_sector_data():
             '代码': 'code',
             '名称': 'name',
             '涨跌幅': 'change_percent',
-            '连板数': 'five_min_change',  # 复用 existing 字段名以减少前端变动，但代表连板数
-            '封板资金': 'net_inflow',     # 复用 existing 字段名
-            '所属行业': 'lead_stock'      # 复用 existing 字段名
+            '最新价': 'latest_price',
+            '连板数': 'continuous_days',
+            '封板资金': 'fund',
+            '首次封板时间': 'first_time',
+            '所属行业': 'industry'
         })
         return df.head(50).to_dict('records')
     except Exception as e:

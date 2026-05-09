@@ -40,14 +40,14 @@ class AuctionMonitor:
             title = f"集合板块强度播报 - {datetime.now().strftime('%Y-%m-%d')}"
             
             content = f"<h3>实时涨停股监控前10名</h3><table border='1' cellspacing='0' cellpadding='5'>"
-            content += "<tr><th>排名</th><th>股票名称</th><th>今日涨幅</th><th>连板数</th><th>封板资金(亿)</th><th>所属行业</th></tr>"
+            content += "<tr><th>排名</th><th>代码</th><th>股票名称</th><th>最新价</th><th>今日涨幅</th><th>连板数</th><th>封板资金(亿)</th><th>首次封板</th><th>所属行业</th></tr>"
             
-            for i, sector in enumerate(top_sectors):
-                change_color = "red" if sector.get('change_percent', 0) > 0 else "green"
-                change_str = f"<span style='color: {change_color}'>{sector.get('change_percent', 0):.2f}%</span>"
+            for i, stock in enumerate(top_sectors):
+                change_color = "red" if stock.get('change_percent', 0) > 0 else "green"
+                change_str = f"<span style='color: {change_color}'>{stock.get('change_percent', 0):.2f}%</span>"
                 
                 # 连板数
-                m_val = sector.get('five_min_change', 0)
+                m_val = stock.get('continuous_days', 0)
                 if m_val > 2:
                     m_style = "color: red; font-weight: bold;"
                 elif m_val > 0:
@@ -57,14 +57,18 @@ class AuctionMonitor:
                 m_str = f"<span style='{m_style}'>{m_val}</span>"
                 
                 # 资金换算为亿元
-                net_inflow = sector.get('net_inflow', 0)
-                money = net_inflow / 100000000 if net_inflow else 0
+                fund = stock.get('fund', 0)
+                money = fund / 100000000 if fund else 0
                 money_color = "red" if money > 0 else "green"
                 money_str = f"<span style='color: {money_color}'>{money:.2f}</span>"
                 
-                lead_stock = sector.get('lead_stock', '-')
+                industry = stock.get('industry', '-')
+                first_time = stock.get('first_time', '-')
+                code = stock.get('code', '-')
+                name = stock.get('name', '')
+                latest_price = stock.get('latest_price', 0)
                 
-                content += f"<tr><td>{i+1}</td><td>{sector.get('name', '')}</td><td>{change_str}</td><td>{m_str}</td><td>{money_str}</td><td>{lead_stock}</td></tr>"
+                content += f"<tr><td>{i+1}</td><td>{code}</td><td>{name}</td><td>{latest_price:.2f}</td><td>{change_str}</td><td>{m_str}</td><td>{money_str}</td><td>{first_time}</td><td>{industry}</td></tr>"
             
             content += "</table>"
             
