@@ -334,7 +334,7 @@ class StockAPI {
 
 
 
-  // 集合竞价API
+  // 板块强度API
   async getAuctionSectors(): Promise<any[]> {
     const data = await this.request<{ success: boolean; data: any[] }>('/api/auction/sectors');
     return data.data;

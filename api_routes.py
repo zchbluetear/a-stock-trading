@@ -2038,7 +2038,7 @@ def register_routes(app):
 
     @app.route('/api/auction/sectors')
     def get_auction_sectors():
-        """获取集合竞价板块强度数据"""
+        """获取板块强度数据"""
         from auction_scanner import get_auction_sector_data
         try:
             sectors = get_auction_sector_data()
@@ -2050,6 +2050,6 @@ def register_routes(app):
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         except Exception as e:
-            print(f"获取集合竞价数据失败: {e}")
+            print(f"获取板块强度数据失败: {e}")
             return jsonify({'success': False, 'error': str(e)}), 500
 
