@@ -17,7 +17,8 @@ export default function Auction() {
   const { data: stocks, isLoading, refetch } = useQuery<LimitUpStock[]>({
     queryKey: ['auction-sectors'],
     queryFn: () => stockAPI.getAuctionSectors(),
-    refetchInterval: 10000
+    refetchInterval: 10000,
+    refetchIntervalInBackground: true
   });
 
   // 格式化金额 (返回亿元)

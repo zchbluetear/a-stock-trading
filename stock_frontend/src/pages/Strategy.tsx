@@ -60,7 +60,8 @@ export default function Strategy() {
   const { data, isLoading, error, refetch, isFetching } = useQuery<StrongStocksResponse>({
     queryKey: ['strong-stocks', limitTime],
     queryFn: () => stockAPI.getStrongStocks(limitTime),
-    refetchInterval: 60000, // 每分钟刷新一次
+    refetchInterval: 10000, // 每分钟刷新一次
+    refetchIntervalInBackground: true,
   });
 
   const { data: agents, isLoading: agentsLoading } = useQuery({
@@ -386,15 +387,14 @@ export default function Strategy() {
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
                       {stock.strength_type ? (
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          stock.strength_type === 'T字缩量'
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${stock.strength_type === 'T字缩量'
                             ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
                             : stock.strength_type === 'T字板'
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                            : stock.strength_type === '缩量板'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-                        }`}>
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                              : stock.strength_type === '缩量板'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                          }`}>
                           {stock.strength_type}
                         </span>
                       ) : '-'}
