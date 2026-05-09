@@ -1984,6 +1984,8 @@ def register_routes(app):
                             stock_data['breakout_60'] = bool(t1_row['close'] > platform_60)
                 except Exception as e:
                     print(f"[API] 计算 {code} 强度信息失败: {e}")
+                    
+                return stock_data
 
             with ThreadPoolExecutor(max_workers=10) as executor:
                 futures = [executor.submit(worker, code) for code in result_codes]
