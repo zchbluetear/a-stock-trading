@@ -1994,6 +1994,9 @@ def register_routes(app):
                     if res:
                         result_stocks.append(res)
 
+            # 按照股票代码排序，确保顺序固定
+            result_stocks.sort(key=lambda x: x['code'])
+
             print(f"[API] 返回强势股数据，共 {len(result_stocks)} 只")
             
             return jsonify({
