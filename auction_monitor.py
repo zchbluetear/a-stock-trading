@@ -85,10 +85,10 @@ class AuctionMonitor:
                         self._send_auction_data()
                         self.last_run_date = today_str
                 
-                # 如果今天已经开始发送数据，则进入 10 分钟(600秒)发送一次的周期
+                # 如果今天已经开始发送数据，则进入 1 小时(3600秒)发送一次的周期
                 # 否则（如早盘开盘前）每 10 秒高频检查一次，以精准踩点 09:26
                 if self.last_run_date == today_str:
-                    time.sleep(600) 
+                    time.sleep(3600) 
                 else:
                     time.sleep(10)
             except Exception as e:
