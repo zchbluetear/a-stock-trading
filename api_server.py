@@ -41,7 +41,6 @@ def start_monitor_service():
         import os
         if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.debug:
             start_monitor()
-            start_auction_monitor()
     except Exception as e:
         print(f"[初始化] 监控服务启动失败: {e}")
 
