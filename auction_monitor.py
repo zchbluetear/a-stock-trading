@@ -81,19 +81,20 @@ class AuctionMonitor:
             try:
                 today_str = datetime.now().strftime('%Y-%m-%d')
                 
-                if self._is_auction_end_time():
+                # 只有在交易时间，且今天还没发送过的情况下才执行发送逻辑
+                if self._is_auction_end_time() and self.last_run_date != today_str:
                         self._send_auction_data()
                         self.last_run_date = today_str
                 
-                # 如果今天已经开始发送数据，则进入 1 小时(3600秒)发送一次的周期
-                # 否则（如早盘开盘前）每 10 秒高频检查一次，以精准踩点 09:26
+                # 如果今天已经完成发送任务，则进入 1 小时(3600秒)的周期（主要是等待跨天重置）
+                # 否则（如早盘 09:26 前）每 10 秒检查一次，以确保精准捕捉时间点
                 if self.last_run_date == today_str:
                     time.sleep(3600) 
                 else:
                     time.sleep(10)
             except Exception as e:
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] [AuctionMonitor] 监控循环发生异常: {e}")
-                time.sleep(600)
+                time.sleep(60)
 
     def start(self):
         if self.is_running:
