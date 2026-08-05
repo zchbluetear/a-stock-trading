@@ -10,8 +10,8 @@ import pandas as pd
 from datetime import datetime
 import json
 import re
-from data_fetchers import get_realtime_data, get_timeline_data, get_minute_kline, get_daily_kline, get_money_flow, get_money_flow_history, get_money_flow_realtime_kline, get_fundamental_data, get_industry_comparison, get_news_from_stock, get_guba_posts
-from technical_indicators import get_comprehensive_data, get_comprehensive_data_with_indicators
+from data_fetchers import get_realtime_data, get_timeline_data, get_minute_kline, get_daily_kline, get_money_flow, get_money_flow_history, get_money_flow_realtime_kline, get_fundamental_data, get_industry_comparison, get_news_from_stock, get_guba_posts, get_market_sentiment_stats
+from technical_indicators import get_comprehensive_data, get_comprehensive_data_with_indicators, calculate_market_sentiment, get_latest_sentiment_summary
 from data_formatters import format_for_ai, to_json
 import requests
 from datetime import date, timedelta
@@ -65,11 +65,54 @@ def register_routes(app):
                 '/api/ai/debate/jobs': '获取辩论任务列表，参数: ?status=active|completed|failed|canceled',
                 '/api/ai/debate/stop/<job_id>': '终止辩论任务，POST请求',
                 '/api/ai/debate/delete/<job_id>': '删除辩论任务，DELETE请求',
+                '/api/market/sentiment': '获取市场情绪强弱量化指标',
                 '/api/health': '健康检查',
             }
         })
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
+
+    @app.route('/api/market/sentiment', methods=['GET'])
+    def get_market_sentiment():
+        """获取市场情绪强弱量化指标"""
+        try:
+            days = int(request.args.get('days', 30))
+            
+            print(f"[API] 获取市场情绪指标，days: {days}")
+            # 1. 获取基础统计数据
+            df_stats = get_market_sentiment_stats(days=days)
+            
+            # 2. 计算情绪指标
+            df_sentiment = calculate_market_sentiment(df_stats)
+            
+            # 3. 获取最新摘要
+            summary = get_latest_sentiment_summary(df_sentiment)
+            
+            # 4. 转换历史数据为前端可用格式
+            history_data = []
+            if df_sentiment is not None and not df_sentiment.empty:
+                for _, row in df_sentiment.iterrows():
+                    history_data.append({
+                        'date': str(row.get('date', '')),
+                        'score': float(row.get('sentiment_score', 0)),
+                        'smooth_score': float(row.get('sentiment_smooth', 0)),
+                        'level': str(row.get('sentiment_level', '')),
+                        'color': str(row.get('level_color', ''))
+                    })
+            
+            result = {
+                'success': True,
+                'summary': summary,
+                'history': history_data
+            }
+            
+            response = jsonify(result)
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        except Exception as e:
+            error_msg = str(e)
+            print(f"[API] 获取市场情绪指标失败: {error_msg}")
+            return jsonify({'success': False, 'error': '获取数据失败', 'message': error_msg}), 500
 
     @app.route('/api/health')
     def health():

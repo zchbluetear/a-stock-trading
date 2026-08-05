@@ -315,3 +315,153 @@ def get_comprehensive_data_with_indicators(code):
             print(f"[API] 计算换手率: {turnover_rate:.2f}% (成交量={volume}股, 流通股本={circulating_shares}亿股)")
     
     return result
+
+
+# ==================== 市场情绪指数计算 ====================
+
+def calculate_market_sentiment(
+    df_daily_stats: pd.DataFrame, 
+    window: int = 20, 
+    ema_span: int = 3,
+    custom_weights: dict = None
+) -> pd.DataFrame:
+    """
+    计算每日市场短线情绪得分及阶段状态 (0 - 100 分)
+    
+    :param df_daily_stats: 包含历史每日市场统计数据的 DataFrame
+           期望列: ['limit_up_count', 'limit_down_count', 'broken_limit_count', 
+                   'next_day_limit_up_premium', 'two_to_three_rate', 'up_down_ratio']
+    :param window: 滚动归一化窗口天数，默认 20 日
+    :param ema_span: 情绪指数指数平滑天数，降低日内噪点，默认 3 日
+    :param custom_weights: 自定义因子权重字典
+    :return: 增加 'sentiment_score', 'sentiment_smooth', 'sentiment_level', 'level_color' 等列的 DataFrame
+    """
+    if df_daily_stats is None or df_daily_stats.empty:
+        return df_daily_stats
+
+    df = df_daily_stats.copy()
+
+    # 1. 动态基础因子构建与容错补充
+    # 封板成功率 (0 ~ 1)
+    if 'limit_up_count' in df.columns and 'broken_limit_count' in df.columns:
+        total_limit = df['limit_up_count'] + df['broken_limit_count']
+        df['seal_rate'] = np.where(total_limit > 0, df['limit_up_count'] / (total_limit + 1e-5), 0.5)
+    else:
+        df['seal_rate'] = 0.5
+
+    # 净涨停差值 (涨停 - 跌停)
+    if 'limit_up_count' in df.columns and 'limit_down_count' in df.columns:
+        df['net_limit'] = df['limit_up_count'] - df['limit_down_count']
+    else:
+        df['net_limit'] = 0
+
+    # 默认标准因子库与其基础经验区间(用于无足够历史数据时的降级绝对归一化)
+    feature_config = {
+        'seal_rate': {'weight': 0.25, 'abs_min': 0.3, 'abs_max': 0.9},
+        'net_limit': {'weight': 0.20, 'abs_min': -50, 'abs_max': 100},
+        'next_day_limit_up_premium': {'weight': 0.25, 'abs_min': -2.0, 'abs_max': 5.0},  # 单位 %
+        'two_to_three_rate': {'weight': 0.15, 'abs_min': 0.0, 'abs_max': 0.8},
+        'up_down_ratio': {'weight': 0.15, 'abs_min': 0.3, 'abs_max': 3.0}
+    }
+
+    # 合并用户自定义权重
+    if custom_weights:
+        for k, v in custom_weights.items():
+            if k in feature_config:
+                feature_config[k]['weight'] = v
+
+    # 过滤数据框中实际存在的因子，并重新归一化权重
+    available_features = [col for col in feature_config.keys() if col in df.columns]
+    if not available_features:
+        # 如果任何明确特征都不存在，设基础得分
+        df['sentiment_score'] = 50.0
+        df['sentiment_smooth'] = 50.0
+        df['sentiment_level'] = '震荡/中性'
+        df['level_color'] = '#1890FF'
+        return df
+
+    total_weight = sum(feature_config[f]['weight'] for f in available_features)
+    
+    # 2. 安全的动态 Min-Max 归一化 (防除零、防突变)
+    norm_df = pd.DataFrame(index=df.index)
+    
+    for col in available_features:
+        weight = feature_config[col]['weight'] / total_weight
+        series = df[col].astype(float).fillna(0.0)
+
+        if len(df) >= 5:  # 历史天数足够，使用动态 Rolling Min-Max
+            roll_min = series.rolling(window, min_periods=3).min()
+            roll_max = series.rolling(window, min_periods=3).max()
+            diff = roll_max - roll_min
+            # 防除零处理：如果 roll_max == roll_min，使用经验绝对区间做降级
+            safe_diff = np.where(diff < 1e-5, feature_config[col]['abs_max'] - feature_config[col]['abs_min'], diff)
+            safe_min = np.where(diff < 1e-5, feature_config[col]['abs_min'], roll_min)
+            
+            norm_val = (series - safe_min) / safe_diff * 100
+        else:  # 历史天数不足，使用绝对经验区间
+            abs_min = feature_config[col]['abs_min']
+            abs_max = feature_config[col]['abs_max']
+            norm_val = (series - abs_min) / (abs_max - abs_min) * 100
+
+        # 裁剪在 0 ~ 100 之间
+        norm_df[col] = norm_val.clip(0, 100) * weight
+
+    # 3. 综合得分计算与 EMA 平滑
+    raw_score = norm_df.sum(axis=1)
+    df['sentiment_score'] = raw_score.round(2)
+    
+    # 指数平滑降低日内噪点
+    df['sentiment_smooth'] = df['sentiment_score'].ewm(span=ema_span, adjust=False).mean().round(2)
+
+    # 4. 情绪阶段状态分类映射 (适合前端渲染与 AI Agent 决策)
+    def map_sentiment_level(score):
+        if score >= 80:
+            return '超强高潮', '#FF4D4F'  # 红色 (极度贪婪/注意见顶风险)
+        elif score >= 60:
+            return '升温/强情绪', '#FA8C16'  # 橙色 (赚钱效应良好/积极参与)
+        elif score >= 40:
+            return '震荡/中性', '#1890FF'   # 蓝色 (多空平衡/注重个股)
+        elif score >= 20:
+            return '分歧/弱情绪', '#52C41A'  # 绿色 (亏损效应显现/控制仓位)
+        else:
+            return '冰点恐慌', '#722ED1'   # 紫色 (极度恐慌/寻找左侧拐点)
+
+    levels_and_colors = [map_sentiment_level(s) for s in df['sentiment_smooth']]
+    df['sentiment_level'] = [item[0] for item in levels_and_colors]
+    df['level_color'] = [item[1] for item in levels_and_colors]
+
+    return df
+
+
+def get_latest_sentiment_summary(df_with_sentiment: pd.DataFrame) -> dict:
+    """
+    提取最新一天的情绪摘要信息（便于 API 接口直接返回给前端展示或 AI Agent 评判）
+    """
+    if df_with_sentiment is None or df_with_sentiment.empty:
+        return {
+            "sentiment_score": 50.0,
+            "sentiment_smooth": 50.0,
+            "level": "震荡/中性",
+            "level_color": "#1890FF",
+            "metrics": {}
+        }
+
+    latest = df_with_sentiment.iloc[-1]
+    date_val = str(latest.name) if not isinstance(latest.name, int) else latest.get('date', '')
+    
+    return {
+        "date": str(date_val),
+        "sentiment_score": float(latest.get('sentiment_score', 50.0)),
+        "sentiment_smooth": float(latest.get('sentiment_smooth', 50.0)),
+        "level": str(latest.get('sentiment_level', '震荡/中性')),
+        "level_color": str(latest.get('level_color', '#1890FF')),
+        "metrics": {
+            "seal_rate": round(float(latest.get('seal_rate', 0.5)) * 100, 2),
+            "net_limit": int(latest.get('net_limit', 0)),
+            "limit_up_count": int(latest.get('limit_up_count', 0)) if pd.notna(latest.get('limit_up_count')) else 0,
+            "limit_down_count": int(latest.get('limit_down_count', 0)) if pd.notna(latest.get('limit_down_count')) else 0,
+            "next_day_premium": float(latest.get('next_day_limit_up_premium', 0.0)) if pd.notna(latest.get('next_day_limit_up_premium')) else 0.0,
+            "two_to_three_rate": float(latest.get('two_to_three_rate', 0.0)) if pd.notna(latest.get('two_to_three_rate')) else 0.0,
+            "up_down_ratio": float(latest.get('up_down_ratio', 1.0)) if pd.notna(latest.get('up_down_ratio')) else 1.0
+        }
+    }

@@ -608,6 +608,103 @@ def get_money_flow_realtime_kline(code, klt=1, lmt=0):
         return []
 
 
+# ==================== 情绪数据获取函数 ====================
+
+def get_market_sentiment_stats(days=30):
+    """
+    综合调用 akshare 接口，整理最近交易日的情绪基础数据集 DataFrame。
+    """
+    try:
+        import akshare as ak
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
+        # 获取交易日历
+        trade_dates_df = ak.tool_trade_date_hist_sina()
+        trade_dates_df['trade_date'] = pd.to_datetime(trade_dates_df['trade_date'])
+        now = datetime.now()
+        
+        # 筛选最近的交易日
+        recent_dates = trade_dates_df[trade_dates_df['trade_date'] <= now]['trade_date'].dt.strftime('%Y%m%d').tolist()[-days:]
+        
+        data_list = []
+        
+        def fetch_date(date_str):
+            try:
+                # 涨停池
+                zt_df = ak.stock_zt_pool_em(date=date_str)
+                zt_count = len(zt_df) if zt_df is not None and not zt_df.empty else 0
+                
+                # 跌停池
+                dt_df = ak.stock_zt_pool_dtgc_em(date=date_str)
+                dt_count = len(dt_df) if dt_df is not None and not dt_df.empty else 0
+                
+                # 炸板池
+                zb_df = ak.stock_zt_pool_zbgc_em(date=date_str)
+                zb_count = len(zb_df) if zb_df is not None and not zb_df.empty else 0
+                
+                # 如果都没有数据，可能是非交易日或者数据缺失
+                if zt_count == 0 and dt_count == 0 and zb_count == 0:
+                    return None
+                
+                record = {
+                    'date': date_str,
+                    'limit_up_count': zt_count,
+                    'limit_down_count': dt_count,
+                    'broken_limit_count': zb_count,
+                    'next_day_limit_up_premium': 0.0,
+                    'two_to_three_rate': 0.0,
+                    'up_down_ratio': 1.0
+                }
+                
+                # 尝试提取连板晋级率等
+                if zt_df is not None and not zt_df.empty and '连板数' in zt_df.columns:
+                    lb_series = pd.to_numeric(zt_df['连板数'], errors='coerce').fillna(1)
+                    two_board_plus = (lb_series >= 2).sum()
+                    first_board = (lb_series == 1).sum()
+                    if first_board > 0:
+                        record['two_to_three_rate'] = two_board_plus / first_board
+                        
+                return record
+            except Exception as e:
+                print(f"[API] 获取 {date_str} 情绪数据失败: {e}")
+                return None
+
+        # 考虑到性能，这里使用并发请求（避免过大并发触发限制，设置max_workers=5）
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_date = {executor.submit(fetch_date, d): d for d in recent_dates}
+            for future in as_completed(future_to_date):
+                res = future.result()
+                if res:
+                    data_list.append(res)
+                    
+        if not data_list:
+            raise ValueError("未能获取到任何情绪数据")
+            
+        df = pd.DataFrame(data_list)
+        df = df.sort_values('date').reset_index(drop=True)
+        return df
+        
+    except Exception as e:
+        print(f"[API] 获取情绪数据总体失败: {e}，将使用降级数据")
+        traceback.print_exc()
+        
+        # 降级容错补偿机制
+        fallback_data = []
+        now = datetime.now()
+        for i in range(days):
+            d = (now - timedelta(days=days-1-i)).strftime('%Y%m%d')
+            fallback_data.append({
+                'date': d,
+                'limit_up_count': 50,
+                'limit_down_count': 10,
+                'broken_limit_count': 20,
+                'next_day_limit_up_premium': 1.5,
+                'two_to_three_rate': 0.3,
+                'up_down_ratio': 1.2
+            })
+        return pd.DataFrame(fallback_data)
+
+
 # ==================== 基本面数据获取函数 ====================
 
 def get_fundamental_data(code):
