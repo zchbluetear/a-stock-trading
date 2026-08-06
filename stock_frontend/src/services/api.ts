@@ -206,6 +206,14 @@ class StockAPI {
     return data.success;
   }
 
+  /** 手动触发：重新计算今日自选股成交量预测（9:45 自动任务的补跑） */
+  async refreshVolumePrediction(): Promise<{ date?: string; count?: number; success?: number; failed?: number }> {
+    const data = await this.request<{ success: boolean; result?: any }>('/api/watchlist/volume_predict', {
+      method: 'POST',
+    });
+    return data.result || {};
+  }
+
   // 配置API
   async getConfig(key: string): Promise<string | null> {
     const data = await this.request<{ success: boolean; data: Record<string, string> }>(`/api/config/${key}`);

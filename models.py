@@ -74,6 +74,25 @@ class DebateJob(Base):
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
+class VolumePrediction(Base):
+    """每日成交量预测表（9:45 计算，15分钟成交量 * 5）"""
+    __tablename__ = 'volume_prediction'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    date = Column(String(10), nullable=False, index=True)  # YYYY-MM-DD
+    code = Column(String(6), nullable=False, index=True)
+    name = Column(String(50))
+    vol_15min = Column(Float, default=0)          # 9:30-9:45 的 15 分钟成交量（单位：股）
+    predicted_vol = Column(Float, default=0)      # 预测全天成交量 = vol_15min * 5（单位：股）
+    today_actual_vol = Column(Float, default=0)   # 今日实时成交量（每次计算时从实时行情读取，单位：股）
+    avg_5d_vol = Column(Float, default=0)         # 过去 5 个交易日平均成交量（单位：股）
+    change_pct = Column(Float, default=0)         # 预测 vs 5 日均量增减幅 (%, 可正可负)
+    calculated_at = Column(DateTime, default=datetime.now)
+    
+    __table_args__ = (
+        {'sqlite_autoincrement': True},
+    )
+
 # 数据库初始化
 DB_PATH = os.path.join(os.path.dirname(__file__), 'database.db')
 engine = create_engine(f'sqlite:///{DB_PATH}', echo=False)

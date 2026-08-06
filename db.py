@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """数据库操作函数"""
 
-from models import SessionLocal, Watchlist, Config, Agent, AnalysisCache, DebateJob
+from models import SessionLocal, Watchlist, Config, Agent, AnalysisCache, DebateJob, VolumePrediction
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import json
@@ -227,4 +227,51 @@ def delete_debate_job(db: Session, job_id: str):
     db.delete(job)
     db.commit()
     return True
+
+# ==================== 成交量预测操作 ====================
+
+def upsert_volume_prediction(db: Session, date: str, code: str, name: str,
+                              vol_15min: float, predicted_vol: float,
+                              today_actual_vol: float,
+                              avg_5d_vol: float, change_pct: float):
+    """写入或更新当天某股票的成交量预测数据"""
+    existing = db.query(VolumePrediction).filter(
+        VolumePrediction.date == date,
+        VolumePrediction.code == code
+    ).first()
+    
+    if existing:
+        existing.name = name
+        existing.vol_15min = vol_15min
+        existing.predicted_vol = predicted_vol
+        existing.today_actual_vol = today_actual_vol
+        existing.avg_5d_vol = avg_5d_vol
+        existing.change_pct = change_pct
+        existing.calculated_at = datetime.now()
+        db.commit()
+        db.refresh(existing)
+        return existing
+    
+    item = VolumePrediction(
+        date=date, code=code, name=name,
+        vol_15min=vol_15min, predicted_vol=predicted_vol,
+        today_actual_vol=today_actual_vol,
+        avg_5d_vol=avg_5d_vol, change_pct=change_pct
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+def get_volume_predictions_by_date(db: Session, date: str):
+    """按日期获取所有成交量预测记录"""
+    return db.query(VolumePrediction).filter(VolumePrediction.date == date).all()
+
+def get_volume_predictions_dict(db: Session, date: str):
+    """按日期获取成交量预测数据，返回 dict: code -> record_obj"""
+    records = get_volume_predictions_by_date(db, date)
+    result = {}
+    for r in records:
+        result[r.code] = r
+    return result
 

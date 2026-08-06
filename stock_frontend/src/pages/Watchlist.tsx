@@ -5,7 +5,6 @@ import { useWatchlistStore } from '../store/watchlistStore';
 import { stockAPI } from '../services/api';
 import AIAnalyzeButton from '../components/AIAnalyzeButton';
 import type { Agent } from '../services/api';
-
 // 判断是否在交易时间
 function isTradingTime(): boolean {
   const now = new Date();
@@ -90,6 +89,22 @@ export default function Watchlist() {
     setShowMultiModal(true);
   };
 
+  const [refreshingVol, setRefreshingVol] = useState(false);
+  const handleRefreshVolumePrediction = async () => {
+    if (refreshingVol) return;
+    setRefreshingVol(true);
+    try {
+      await stockAPI.refreshVolumePrediction();
+      // 重新拉取自选股列表（会带最新的 volume_prediction）
+      await fetchWatchlist();
+    } catch (e) {
+      console.error('刷新成交量预测失败:', e);
+      alert('刷新成交量预测失败：' + ((e as Error).message || '未知错误'));
+    } finally {
+      setRefreshingVol(false);
+    }
+  };
+
   const handleStartMulti = async () => {
     if (selectedCodes.length < 2) {
       setMultiError('请至少勾选2只股票');
@@ -125,16 +140,25 @@ export default function Watchlist() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">自选股管理</h1>
-        {selectedCodes.length >= 2 && (
+        <div className="flex items-center gap-3 flex-wrap">
           <button
-            onClick={handleOpenMulti}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            onClick={handleRefreshVolumePrediction}
+            disabled={refreshingVol}
+            className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
-            多选一 AI分析
+            {refreshingVol ? '计算中...' : '刷新成交量预测'}
           </button>
-        )}
+          {selectedCodes.length >= 2 && (
+            <button
+              onClick={handleOpenMulti}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              多选一 AI分析
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 添加自选股 */}
@@ -324,6 +348,28 @@ function WatchlistItem({
     ? realtimeData.current_price - realtimeData.yesterday_close
     : 0;
   const isUp = changePercent >= 0;
+  
+  const volumePrediction = item.volume_prediction as {
+    predicted_vol?: number;
+    today_actual_vol?: number;
+    avg_5d_vol?: number;
+    change_pct?: number;
+    vol_15min?: number;
+  } | null | undefined;
+  
+  /**
+   * 新浪返回的成交量单位是「股」。
+   * A 股常用单位是「手」，1 手 = 100 股；1 万手 = 1,000,000 股；1 亿手 = 100,000,000 股。
+   */
+  const formatVolume = (v?: number) => {
+    if (v == null || isNaN(v) || v <= 0) return '--';
+    // 1手 = 100股
+    const hands = v / 100;
+    if (hands >= 100000000) return `${(hands / 100000000).toFixed(2)}亿手`; // 1亿手+
+    if (hands >= 10000) return `${(hands / 10000).toFixed(2)}万手`;         // 1万手+
+    if (hands >= 1) return `${hands.toFixed(0)}手`;                           // 1手+
+    return `${hands.toFixed(2)}手`;
+  };
 
   return (
     <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
@@ -344,6 +390,36 @@ function WatchlistItem({
             {item.name || item.code}
           </div>
           <div className="text-sm text-gray-500 dark:text-gray-400">{item.code}</div>
+          {/* 成交量预测：在"自选"列（名称列）下方显示 */}
+          {volumePrediction && ((volumePrediction.predicted_vol ?? 0) > 0 || (volumePrediction.today_actual_vol ?? 0) > 0) ? (
+            <div className="mt-1 text-xs flex items-center gap-2 flex-wrap">
+              {(volumePrediction.today_actual_vol ?? 0) > 0 ? (
+                <>
+                  <span className="text-gray-600 dark:text-gray-300 font-medium">
+                    今日实量:{formatVolume(volumePrediction.today_actual_vol)}
+                  </span>
+                  <span className="text-gray-400 dark:text-gray-500 font-medium">|</span>
+                </>
+              ) : null}
+              <span className="text-gray-600 dark:text-gray-300 font-medium">
+                预测量:{formatVolume(volumePrediction.predicted_vol)}
+              </span>
+              <span className="text-gray-400 dark:text-gray-500 font-medium">/</span>
+              <span className="text-gray-600 dark:text-gray-300 font-medium">
+                5日均:{formatVolume(volumePrediction.avg_5d_vol)}
+              </span>
+              <span
+                className={`font-semibold px-1.5 py-0.5 rounded ${
+                  (volumePrediction.change_pct ?? 0) >= 0
+                    ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20'
+                    : 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
+                }`}
+              >
+                {(volumePrediction.change_pct ?? 0) >= 0 ? '+' : ''}
+                {(volumePrediction.change_pct ?? 0).toFixed(1)}%
+              </span>
+            </div>
+          ) : null}
         </div>
 
         {/* 实时行情信息 */}

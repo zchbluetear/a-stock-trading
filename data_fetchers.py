@@ -610,6 +610,152 @@ def get_money_flow_realtime_kline(code, klt=1, lmt=0):
 
 # ==================== 情绪数据获取函数 ====================
 
+def calculate_stock_volume_prediction(code: str, name: str = None, date_str: str = None):
+    """
+    计算单只股票的成交量预测：
+    - 严格使用【scale=5 的 5 分钟 K 线】累加覆盖 09:30 开盘 ~ 09:45 的 15 分钟成交量：
+      5 分钟 K 线 bar 时间为【右边界】：
+        09:35 bar → 覆盖 09:30~09:35
+        09:40 bar → 覆盖 09:35~09:40
+        09:45 bar → 覆盖 09:40~09:45
+      因此取 5 分钟 K 线中 datetime ∈ (09:30:00, 09:45:00] 的 3 根 bar，其 volume 之和
+      就是 09:30~09:45 的完整 15 分钟成交量。
+    - 预测全天成交量 = 15分钟量 * 5
+    - 取最近 5 个已完整交易日（不含今天）的日线 volume 求均值，计算增减百分比
+
+    Returns: dict or None
+    """
+    try:
+        if not date_str:
+            date_str = datetime.now().strftime('%Y-%m-%d')
+
+        # 5 分钟 K 线窗口：右边界=09:45:00（含），左边界 09:30 开仓点（不含，避免误取 09:30 的 bar）
+        WINDOW_START_5M = pd.Timestamp(f"{date_str} 09:30:00")
+        WINDOW_END_5M   = pd.Timestamp(f"{date_str} 09:45:00")
+
+        vol_15min = 0.0
+        bar_count = 0
+        data_source = None
+
+        # 1. 主路径：scale=5 的 5 分钟 K 线（新浪对 scale=5 支持最好）
+        m5_df = get_minute_kline(code, scale=5, datalen=96)
+        if m5_df is not None and not m5_df.empty and 'datetime' in m5_df.columns and 'volume' in m5_df.columns:
+            dt_series = pd.to_datetime(m5_df['datetime'], errors='coerce')
+            mask = (dt_series > WINDOW_START_5M) & (dt_series <= WINDOW_END_5M)
+            window = m5_df.loc[mask].copy()
+            if not window.empty:
+                window = window.sort_values('datetime').reset_index(drop=True)
+                vols = pd.to_numeric(window['volume'], errors='coerce').fillna(0)
+                vol_15min = float(vols.sum())
+                bar_count = int((vols > 0).sum())
+                data_source = "5min_kline"
+                # 打印明细便于核对
+                print(f"    [DEBUG-5M] {code} 命中 {bar_count} 根5分钟K明细 => "
+                      f"{list(zip([str(x) for x in window['datetime'].tolist()], [round(float(x)) for x in vols.tolist()]))}")
+
+        # 2. 兜底：若 5 分钟 K 拿不到，直接从新浪实时分时接口取【累计成交量】在 09:45 的值（严格锁定窗口）
+        if vol_15min <= 0:
+            tl_df = get_timeline_data(code)
+            if tl_df is not None and not tl_df.empty and 'datetime' in tl_df.columns and 'volume' in tl_df.columns:
+                dt_series = pd.to_datetime(tl_df['datetime'], errors='coerce')
+                today_mask = dt_series.dt.strftime('%Y-%m-%d') == date_str
+                today_df = tl_df.loc[today_mask].copy()
+                if not today_df.empty:
+                    today_df = today_df.assign(__dt=dt_series[today_mask])
+                    today_df = today_df.sort_values('__dt').reset_index(drop=True)
+                    # 取 09:45 及之前的最后一根，并减去 09:30 之前的累计量
+                    before_930 = today_df[today_df['__dt'] < WINDOW_START_5M]
+                    before_945 = today_df[today_df['__dt'] <= WINDOW_END_5M]
+                    vol_before_930 = 0.0
+                    if not before_930.empty:
+                        vol_before_930 = float(pd.to_numeric(before_930['volume'], errors='coerce').fillna(0).iloc[-1])
+                    vol_at_945 = 0.0
+                    if not before_945.empty:
+                        vol_at_945 = float(pd.to_numeric(before_945['volume'], errors='coerce').fillna(0).iloc[-1])
+                    diff = vol_at_945 - vol_before_930
+                    if diff > 0:
+                        vol_15min = float(diff)
+                        bar_count = len(before_945) - len(before_930)
+                        data_source = "timeline_cumulative"
+
+        predicted_vol = vol_15min * 5.0
+
+        # 3. 最近 5 个完整交易日的日均量：严格排除今天，取最近 5 根
+        avg_5d_vol = 0.0
+        change_pct = 0.0
+
+        daily_df = get_daily_kline(code, count=30)
+        if daily_df is not None and not daily_df.empty and 'volume' in daily_df.columns:
+            vols: list[float] = []
+            today_date = pd.Timestamp(date_str).date()
+
+            tmp_df = daily_df.copy()
+            if 'date' in tmp_df.columns:
+                tmp_df['__date_parsed'] = pd.to_datetime(tmp_df['date'], errors='coerce')
+                tmp_df = tmp_df.dropna(subset=['__date_parsed'])
+                tmp_df = tmp_df.sort_values('__date_parsed', ascending=True).reset_index(drop=True)
+
+            for _, row in tmp_df.iterrows():
+                row_vol = row.get('volume')
+                if pd.isna(row_vol) or row_vol <= 0:
+                    continue
+                row_date = row.get('__date_parsed') if '__date_parsed' in row else row.get('date')
+                if row_date is not None:
+                    try:
+                        if pd.Timestamp(row_date).date() == today_date:
+                            continue
+                    except Exception:
+                        pass
+                try:
+                    vols.append(float(row_vol))
+                except (TypeError, ValueError):
+                    continue
+
+            if len(vols) >= 5:
+                avg_5d_vol = float(sum(vols[-5:]) / 5.0)
+            elif len(vols) > 0:
+                avg_5d_vol = float(sum(vols) / len(vols))
+
+        if avg_5d_vol > 0 and predicted_vol > 0:
+            change_pct = ((predicted_vol - avg_5d_vol) / avg_5d_vol) * 100.0
+
+        # 读取今日实时成交量（每次计算时刷新，保证是最新的盘中实量）
+        # 单位统一：get_realtime_data 返回的 volume 字段和日线/分钟线一致，都是「股」
+        today_actual_vol = 0.0
+        rt = None
+        try:
+            rt = get_realtime_data(code)
+        except Exception:
+            rt = None
+
+        if rt:
+            if not name and rt.get('name'):
+                name = rt.get('name')
+            raw_vol = rt.get('volume')
+            if raw_vol is not None and not pd.isna(raw_vol) and float(raw_vol) > 0:
+                today_actual_vol = float(raw_vol)
+
+        print(f"[VolumePredict] {date_str} {code}({name or ''}) source={data_source}, "
+              f"9:30-9:45有效bar数={bar_count}, 15min量={vol_15min:.0f}, "
+              f"预测全天={predicted_vol:.0f}, 今日实量={today_actual_vol:.0f}, "
+              f"5日均={avg_5d_vol:.0f}, 增减={change_pct:+.2f}%")
+
+        return {
+            'code': code,
+            'name': name or '',
+            'date': date_str,
+            'vol_15min': vol_15min,
+            'predicted_vol': predicted_vol,
+            'today_actual_vol': today_actual_vol,
+            'avg_5d_vol': avg_5d_vol,
+            'change_pct': change_pct,
+        }
+    except Exception as e:
+        print(f"[API] 计算股票 {code} 成交量预测失败: {e}")
+        traceback.print_exc()
+        return None
+
+
 def get_market_sentiment_stats(days=30):
     """
     综合调用 akshare 接口，整理最近交易日的情绪基础数据集 DataFrame。

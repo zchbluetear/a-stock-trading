@@ -10,7 +10,7 @@ import pandas as pd
 from datetime import datetime
 import json
 import re
-from data_fetchers import get_realtime_data, get_timeline_data, get_minute_kline, get_daily_kline, get_money_flow, get_money_flow_history, get_money_flow_realtime_kline, get_fundamental_data, get_industry_comparison, get_news_from_stock, get_guba_posts, get_market_sentiment_stats
+from data_fetchers import get_realtime_data, get_timeline_data, get_minute_kline, get_daily_kline, get_money_flow, get_money_flow_history, get_money_flow_realtime_kline, get_fundamental_data, get_industry_comparison, get_news_from_stock, get_guba_posts, get_market_sentiment_stats, calculate_stock_volume_prediction
 from technical_indicators import get_comprehensive_data, get_comprehensive_data_with_indicators, calculate_market_sentiment, get_latest_sentiment_summary
 from data_formatters import format_for_ai, to_json
 import requests
@@ -21,9 +21,80 @@ from db import (
     get_config, set_config, get_all_configs,
     get_agents, get_agent, create_agent, update_agent, delete_agent,
     get_cached_analysis, save_analysis_cache,
-    create_debate_job, update_debate_job, get_debate_job, list_debate_jobs, cancel_debate_job, delete_debate_job
+    create_debate_job, update_debate_job, get_debate_job, list_debate_jobs, cancel_debate_job, delete_debate_job,
+    upsert_volume_prediction, get_volume_predictions_dict
 )
 from ai_service import AIService
+
+# ==================== 成交量预测定时任务 ====================
+
+def run_watchlist_volume_prediction_task():
+    """
+    定时任务：扫描自选股列表，计算每只股票的 15 分钟成交量与全天预测，
+    并与 5 日平均成交量对比得到增减百分比。
+    """
+    print("[Scheduler] 开始执行【自选股成交量预测】任务...")
+    db = SessionLocal()
+    try:
+        watchlist = get_watchlist(db)
+        if not watchlist:
+            print("[Scheduler] 自选股为空，跳过任务")
+            return {'count': 0, 'success': 0, 'failed': 0}
+        
+        today = datetime.now().strftime('%Y-%m-%d')
+        success_count = 0
+        fail_count = 0
+        
+        def worker(item):
+            try:
+                name = item.name
+                res = calculate_stock_volume_prediction(item.code, name=name, date_str=today)
+                return item, res
+            except Exception as e:
+                print(f"[Scheduler] 处理 {item.code} 失败: {e}")
+                return item, None
+        
+        # 并发计算提高效率，但限制 workers
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = [executor.submit(worker, item) for item in watchlist]
+            for future in as_completed(futures):
+                item, result = future.result()
+                if not result:
+                    fail_count += 1
+                    continue
+                try:
+                    upsert_volume_prediction(
+                        db,
+                        date=today,
+                        code=result['code'],
+                        name=result['name'] or item.name or '',
+                        vol_15min=result['vol_15min'],
+                        predicted_vol=result['predicted_vol'],
+                        today_actual_vol=result.get('today_actual_vol', 0),
+                        avg_5d_vol=result['avg_5d_vol'],
+                        change_pct=result['change_pct'],
+                    )
+                    success_count += 1
+                except Exception as e:
+                    print(f"[Scheduler] 写入 {item.code} 失败: {e}")
+                    fail_count += 1
+        
+        ret = {
+            'date': today,
+            'count': len(watchlist),
+            'success': success_count,
+            'failed': fail_count
+        }
+        print(f"[Scheduler] 自选股成交量预测任务完成: {ret}")
+        return ret
+    except Exception as e:
+        print(f"[Scheduler] 自选股成交量预测任务执行失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return {'success': 0, 'failed': -1, 'error': str(e)}
+    finally:
+        db.close()
+
 
 def register_routes(app):
     """注册所有API路由"""
@@ -599,18 +670,55 @@ def register_routes(app):
     
     @app.route('/api/watchlist', methods=['GET'])
     def get_watchlist_api():
-        """获取自选股列表"""
+        """获取自选股列表（附带当日成交量预测数据）"""
         db = next(get_db())
         try:
             items = get_watchlist(db)
+            today = datetime.now().strftime('%Y-%m-%d')
+            
+            # 读取当日的成交量预测数据
+            vol_dict = get_volume_predictions_dict(db, today)
+            
+            data_list = []
+            for item in items:
+                rec = {
+                    'id': item.id,
+                    'code': item.code,
+                    'name': item.name,
+                    'sort_order': item.sort_order
+                }
+                if item.code in vol_dict:
+                    v = vol_dict[item.code]
+                    rec['volume_prediction'] = {
+                        'date': v.date,
+                        'vol_15min': float(v.vol_15min or 0),
+                        'predicted_vol': float(v.predicted_vol or 0),
+                        'today_actual_vol': float(v.today_actual_vol or 0),
+                        'avg_5d_vol': float(v.avg_5d_vol or 0),
+                        'change_pct': float(v.change_pct or 0),
+                        'calculated_at': v.calculated_at.isoformat() if v.calculated_at else None
+                    }
+                else:
+                    rec['volume_prediction'] = None
+                data_list.append(rec)
+            
             return jsonify({
                 'success': True,
-                'data': [{'id': item.id, 'code': item.code, 'name': item.name, 'sort_order': item.sort_order} for item in items]
+                'data': data_list
             })
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
         finally:
             db.close()
+    
+    @app.route('/api/watchlist/volume_predict', methods=['POST'])
+    def trigger_watchlist_volume_predict_api():
+        """手动触发计算自选股的成交量预测（补跑用）"""
+        try:
+            result = run_watchlist_volume_prediction_task()
+            return jsonify({'success': True, 'result': result})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
     
     @app.route('/api/watchlist', methods=['POST'])
     def add_watchlist_api():
