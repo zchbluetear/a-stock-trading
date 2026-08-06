@@ -16,6 +16,7 @@ from data_formatters import format_for_ai, to_json
 import requests
 from datetime import date, timedelta
 from models import get_db, SessionLocal
+import models
 from db import (
     get_watchlist, add_to_watchlist, remove_from_watchlist, update_watchlist_order,
     get_config, set_config, get_all_configs,
@@ -92,6 +93,46 @@ def run_watchlist_volume_prediction_task():
         import traceback
         traceback.print_exc()
         return {'success': 0, 'failed': -1, 'error': str(e)}
+    finally:
+        db.close()
+
+
+def run_single_stock_volume_prediction_task(code: str):
+    """单只股票的成交量预测计算（给单只刷新接口用）"""
+    code = str(code).strip()
+    if not code or len(code) != 6:
+        return None, "股票代码格式错误"
+    
+    db = next(get_db())
+    try:
+        # 确认该股票在自选列表里（否则不让刷，避免随便刷任意代码）
+        wl = db.query(models.Watchlist).filter(models.Watchlist.code == code).first()
+        if not wl:
+            return None, "股票不在自选列表中"
+        name = wl.name if wl.name else code
+
+        date_str = datetime.now().strftime('%Y-%m-%d')
+        vp = calculate_stock_volume_prediction(code, name=name, date_str=date_str)
+        if vp is None:
+            return None, "计算失败（可能非交易日或接口无数据）"
+        
+        upsert_volume_prediction(
+            db,
+            date=vp['date'],
+            code=code,
+            name=vp['name'] or name or code,
+            vol_15min=vp['vol_15min'],
+            predicted_vol=vp['predicted_vol'],
+            today_actual_vol=vp.get('today_actual_vol', 0),
+            avg_5d_vol=vp['avg_5d_vol'],
+            change_pct=vp['change_pct'],
+        )
+        return vp, None
+    except Exception as e:
+        print(f"[Scheduler] 单只成交量预测任务执行失败 {code}: {e}")
+        import traceback
+        traceback.print_exc()
+        return None, str(e)
     finally:
         db.close()
 
@@ -713,10 +754,21 @@ def register_routes(app):
     
     @app.route('/api/watchlist/volume_predict', methods=['POST'])
     def trigger_watchlist_volume_predict_api():
-        """手动触发计算自选股的成交量预测（补跑用）"""
+        """手动触发计算全部自选股的成交量预测（补跑用）"""
         try:
             result = run_watchlist_volume_prediction_task()
             return jsonify({'success': True, 'result': result})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/watchlist/<code>/volume_predict', methods=['POST'])
+    def trigger_single_watchlist_volume_predict_api(code):
+        """手动触发计算单只自选股的成交量预测"""
+        try:
+            vp, err = run_single_stock_volume_prediction_task(code)
+            if err:
+                return jsonify({'success': False, 'error': err}), 400
+            return jsonify({'success': True, 'result': vp})
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     

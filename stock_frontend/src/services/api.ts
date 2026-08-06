@@ -206,12 +206,20 @@ class StockAPI {
     return data.success;
   }
 
-  /** 手动触发：重新计算今日自选股成交量预测（9:45 自动任务的补跑） */
+  /** 手动触发：重新计算今日全部自选股成交量预测（9:45 自动任务的补跑） */
   async refreshVolumePrediction(): Promise<{ date?: string; count?: number; success?: number; failed?: number }> {
     const data = await this.request<{ success: boolean; result?: any }>('/api/watchlist/volume_predict', {
       method: 'POST',
     });
     return data.result || {};
+  }
+
+  /** 手动触发：重新计算单只自选股今日成交量预测（秒级返回） */
+  async refreshSingleVolumePrediction(code: string): Promise<any> {
+    const data = await this.request<{ success: boolean; result?: any }>(`/api/watchlist/${code}/volume_predict`, {
+      method: 'POST',
+    });
+    return data.result || null;
   }
 
   // 配置API

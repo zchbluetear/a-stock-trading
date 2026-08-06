@@ -105,6 +105,21 @@ export default function Watchlist() {
     }
   };
 
+  const [refreshingSingle, setRefreshingSingle] = useState<string | null>(null);
+  const handleRefreshSingleVolumePrediction = async (code: string) => {
+    if (refreshingSingle) return;
+    setRefreshingSingle(code);
+    try {
+      await stockAPI.refreshSingleVolumePrediction(code);
+      await fetchWatchlist();
+    } catch (e) {
+      console.error(`单只刷新成交量预测失败 ${code}:`, e);
+      alert('刷新失败：' + ((e as Error).message || '未知错误'));
+    } finally {
+      setRefreshingSingle(null);
+    }
+  };
+
   const handleStartMulti = async () => {
     if (selectedCodes.length < 2) {
       setMultiError('请至少勾选2只股票');
@@ -148,7 +163,7 @@ export default function Watchlist() {
             disabled={refreshingVol}
             className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
-            {refreshingVol ? '计算中...' : '刷新成交量预测'}
+            {refreshingVol ? '计算中...' : '全部刷新成交量预测'}
           </button>
           {selectedCodes.length >= 2 && (
             <button
@@ -200,6 +215,8 @@ export default function Watchlist() {
                   onRemove={() => removeStock(item.code)}
                   selected={selectedCodes.includes(item.code)}
                   onToggleSelect={() => toggleSelectCode(item.code)}
+                  onRefreshSingle={handleRefreshSingleVolumePrediction}
+                  refreshingSingle={refreshingSingle}
                 />
               ))}
             </div>
@@ -329,11 +346,15 @@ function WatchlistItem({
   onRemove,
   selected,
   onToggleSelect,
+  onRefreshSingle,
+  refreshingSingle,
 }: {
   item: any;
   onRemove: () => void;
   selected: boolean;
   onToggleSelect: () => void;
+  onRefreshSingle: (code: string) => Promise<void>;
+  refreshingSingle: string | null;
 }) {
   // 获取实时行情数据
   const { data: realtimeData, isLoading } = useQuery({
@@ -447,6 +468,26 @@ function WatchlistItem({
       </Link>
 
       <div className="ml-4 flex items-center gap-2">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            onRefreshSingle(item.code);
+          }}
+          disabled={refreshingSingle === item.code}
+          title="刷新这只股票的成交量预测"
+          className="px-2.5 py-1.5 text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {refreshingSingle === item.code ? (
+            <span className="text-xs font-medium">计算中…</span>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              <path d="M3 12a9 9 0 0 1 15.5-6.4L21 8"/>
+              <path d="M21 3v5h-5"/>
+              <path d="M21 12a9 9 0 0 1-15.5 6.4L3 16"/>
+              <path d="M3 21v-5h5"/>
+            </svg>
+          )}
+        </button>
         <AIAnalyzeButton code={item.code} className="text-sm px-3 py-1.5" />
         <button
           onClick={(e) => {
