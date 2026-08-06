@@ -12,6 +12,7 @@ export default function Layout({ children }: LayoutProps) {
     { path: '/', label: '首页' },
     { path: '/watchlist', label: '自选' },
     { path: '/tasks', label: '任务' },
+    { path: '/sentiment', label: '情绪' },
     { path: '/strategy', label: '策略' },
     { path: '/auction', label: '板块' },
     { path: '/settings', label: '配置' },

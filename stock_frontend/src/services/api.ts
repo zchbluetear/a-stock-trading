@@ -95,6 +95,32 @@ export interface DebateJobStatus {
   updated_at: string;
 }
 
+export interface SentimentData {
+  summary: {
+    date: string;
+    level: string;
+    level_color: string;
+    sentiment_score: number;
+    sentiment_smooth: number;
+    metrics: {
+      limit_down_count: number;
+      limit_up_count: number;
+      net_limit: number;
+      next_day_premium: number;
+      seal_rate: number;
+      two_to_three_rate: number;
+      up_down_ratio: number;
+    }
+  };
+  history: Array<{
+    date: string;
+    score: number;
+    smooth_score: number;
+    level: string;
+    color: string;
+  }>;
+}
+
 class StockAPI {
   private baseURL: string;
 
@@ -127,6 +153,14 @@ class StockAPI {
   }
 
   // 数据获取API
+  async getMarketSentiment(days: number = 30): Promise<SentimentData> {
+    const data = await this.request<{ success: boolean; summary: SentimentData['summary']; history: SentimentData['history'] }>(`/api/market/sentiment?days=${days}`);
+    return {
+      summary: data.summary,
+      history: data.history
+    };
+  }
+
   async getRealtime(code: string): Promise<StockRealtime> {
     const response = await this.request<any>(`/api/sina/realtime/${code}`);
     // 后端返回格式可能是 { data: {...} } 或直接返回数据

@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import Watchlist from './pages/Watchlist';
 import StockDetail from './pages/StockDetail';
 import Tasks from './pages/Tasks';
+import Sentiment from './pages/Sentiment';
 import Strategy from './pages/Strategy';
 import Settings from './pages/Settings';
 import AIDebate from './pages/AIDebate';
@@ -31,6 +32,7 @@ function App() {
             <Route path="/watchlist" element={<Watchlist />} />
             <Route path="/stock/:code" element={<StockDetail />} />
             <Route path="/tasks" element={<Tasks />} />
+            <Route path="/sentiment" element={<Sentiment />} />
             <Route path="/strategy" element={<Strategy />} />
             <Route path="/auction" element={<Auction />} />
             <Route path="/ai-debate" element={<AIDebate />} />
