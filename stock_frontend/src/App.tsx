@@ -7,6 +7,7 @@ import Tasks from './pages/Tasks';
 import Sentiment from './pages/Sentiment';
 import Strategy from './pages/Strategy';
 import StrategyConfig from './pages/StrategyConfig';
+import StrategyToggle from './pages/StrategyToggle';
 import Settings from './pages/Settings';
 import AIDebate from './pages/AIDebate';
 import Auction from './pages/Auction';
@@ -36,6 +37,7 @@ function App() {
             <Route path="/sentiment" element={<Sentiment />} />
             <Route path="/strategy" element={<Strategy />} />
             <Route path="/strategy-config" element={<StrategyConfig />} />
+            <Route path="/strategy-toggle" element={<StrategyToggle />} />
             <Route path="/auction" element={<Auction />} />
             <Route path="/ai-debate" element={<AIDebate />} />
             <Route path="/settings" element={<Settings />} />

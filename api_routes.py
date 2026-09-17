@@ -2302,3 +2302,122 @@ def register_routes(app):
         finally:
             if conn:
                 conn.close()
+
+    # ==================== 股票策略启停配置 API (MySQL: qmt_stock_config) ====================
+
+    @app.route('/api/strategy-stock-config', methods=['GET'])
+    def get_strategy_stock_config():
+        """获取所有股票策略配置"""
+        conn = None
+        try:
+            conn = get_qmt_mysql_conn()
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT id, stock_code, strategy_type, stock_name, strategy_enabled, paused, updated_at FROM qmt_stock_config ORDER BY updated_at DESC, id DESC"
+                )
+                rows = cursor.fetchall()
+            return jsonify({'success': True, 'data': rows})
+        except Exception as e:
+            print(f"[API] 获取股票策略配置失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            if conn:
+                conn.close()
+
+    @app.route('/api/strategy-stock-config', methods=['POST'])
+    def add_strategy_stock_config():
+        """新增股票策略配置"""
+        conn = None
+        try:
+            body = request.get_json(force=True)
+            stock_code = body.get('stock_code')
+            strategy_type = body.get('strategy_type', 'short')
+            stock_name = body.get('stock_name', '')
+            strategy_enabled = int(body.get('strategy_enabled', 1))
+            paused = int(body.get('paused', 0))
+
+            if not stock_code:
+                return jsonify({'success': False, 'error': 'stock_code 不能为空'}), 400
+
+            conn = get_qmt_mysql_conn()
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO qmt_stock_config 
+                    (stock_code, strategy_type, stock_name, strategy_enabled, paused, updated_at) 
+                    VALUES (%s, %s, %s, %s, %s, NOW())
+                    """,
+                    (stock_code, strategy_type, stock_name, strategy_enabled, paused)
+                )
+            conn.commit()
+            return jsonify({'success': True})
+        except Exception as e:
+            print(f"[API] 新增股票策略配置失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            if conn:
+                conn.close()
+
+    @app.route('/api/strategy-stock-config/<int:item_id>', methods=['PUT'])
+    def update_strategy_stock_config(item_id):
+        """更新股票策略配置"""
+        conn = None
+        try:
+            body = request.get_json(force=True)
+            # Only update fields that are provided
+            update_fields = []
+            update_values = []
+            
+            if 'strategy_enabled' in body:
+                update_fields.append("strategy_enabled = %s")
+                update_values.append(int(body['strategy_enabled']))
+            if 'paused' in body:
+                update_fields.append("paused = %s")
+                update_values.append(int(body['paused']))
+            if 'strategy_type' in body:
+                update_fields.append("strategy_type = %s")
+                update_values.append(body['strategy_type'])
+            if 'stock_name' in body:
+                update_fields.append("stock_name = %s")
+                update_values.append(body['stock_name'])
+                
+            if not update_fields:
+                return jsonify({'success': False, 'error': '没有提供更新字段'}), 400
+
+            update_fields.append("updated_at = NOW()")
+            update_values.append(item_id)
+
+            sql = f"UPDATE qmt_stock_config SET {', '.join(update_fields)} WHERE id = %s"
+            
+            conn = get_qmt_mysql_conn()
+            with conn.cursor() as cursor:
+                affected = cursor.execute(sql, tuple(update_values))
+            conn.commit()
+            if affected == 0:
+                return jsonify({'success': False, 'error': f'id [{item_id}] 不存在'}), 404
+            return jsonify({'success': True})
+        except Exception as e:
+            print(f"[API] 更新股票策略配置失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            if conn:
+                conn.close()
+
+    @app.route('/api/strategy-stock-config/<int:item_id>', methods=['DELETE'])
+    def delete_strategy_stock_config(item_id):
+        """删除股票策略配置"""
+        conn = None
+        try:
+            conn = get_qmt_mysql_conn()
+            with conn.cursor() as cursor:
+                affected = cursor.execute("DELETE FROM qmt_stock_config WHERE id = %s", (item_id,))
+            conn.commit()
+            if affected == 0:
+                return jsonify({'success': False, 'error': f'id [{item_id}] 不存在'}), 404
+            return jsonify({'success': True})
+        except Exception as e:
+            print(f"[API] 删除股票策略配置失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            if conn:
+                conn.close()

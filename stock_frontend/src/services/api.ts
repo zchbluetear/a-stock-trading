@@ -127,6 +127,16 @@ export interface StrategyGlobalConfigItem {
   description: string | null;
 }
 
+export interface StrategyStockConfigItem {
+  id: number;
+  stock_code: string;
+  strategy_type: string;
+  stock_name: string;
+  strategy_enabled: number;
+  paused: number;
+  updated_at: string;
+}
+
 class StockAPI {
   private baseURL: string;
 
@@ -406,6 +416,35 @@ class StockAPI {
     const data = await this.request<{ success: boolean }>(`/api/strategy-global-config/${encodeURIComponent(cfgKey)}`, {
       method: 'PUT',
       body: JSON.stringify({ cfg_value: cfgValue }),
+    });
+    return data.success;
+  }
+
+  // 股票策略启停配置 API (qmt_stock_config)
+  async getStrategyStockConfigs(): Promise<StrategyStockConfigItem[]> {
+    const data = await this.request<{ success: boolean; data: StrategyStockConfigItem[] }>('/api/strategy-stock-config');
+    return data.data;
+  }
+
+  async addStrategyStockConfig(item: Omit<StrategyStockConfigItem, 'id' | 'updated_at'>): Promise<boolean> {
+    const data = await this.request<{ success: boolean }>('/api/strategy-stock-config', {
+      method: 'POST',
+      body: JSON.stringify(item),
+    });
+    return data.success;
+  }
+
+  async updateStrategyStockConfig(id: number, updates: Partial<StrategyStockConfigItem>): Promise<boolean> {
+    const data = await this.request<{ success: boolean }>(`/api/strategy-stock-config/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+    return data.success;
+  }
+
+  async deleteStrategyStockConfig(id: number): Promise<boolean> {
+    const data = await this.request<{ success: boolean }>(`/api/strategy-stock-config/${id}`, {
+      method: 'DELETE',
     });
     return data.success;
   }
