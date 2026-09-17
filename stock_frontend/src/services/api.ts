@@ -121,6 +121,12 @@ export interface SentimentData {
   }>;
 }
 
+export interface StrategyGlobalConfigItem {
+  cfg_key: string;
+  cfg_value: string;
+  description: string | null;
+}
+
 class StockAPI {
   private baseURL: string;
 
@@ -390,7 +396,19 @@ class StockAPI {
     return data.data;
   }
 
+  // 策略全局配置 API (qmt_duanxian_global)
+  async getStrategyGlobalConfigs(): Promise<StrategyGlobalConfigItem[]> {
+    const data = await this.request<{ success: boolean; data: StrategyGlobalConfigItem[] }>('/api/strategy-global-config');
+    return data.data;
+  }
 
+  async updateStrategyGlobalConfig(cfgKey: string, cfgValue: string): Promise<boolean> {
+    const data = await this.request<{ success: boolean }>(`/api/strategy-global-config/${encodeURIComponent(cfgKey)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ cfg_value: cfgValue }),
+    });
+    return data.success;
+  }
 }
 
 export const stockAPI = new StockAPI();

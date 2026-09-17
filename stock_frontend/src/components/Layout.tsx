@@ -14,6 +14,7 @@ export default function Layout({ children }: LayoutProps) {
     { path: '/tasks', label: '任务' },
     { path: '/sentiment', label: '情绪' },
     { path: '/strategy', label: '策略' },
+    { path: '/strategy-config', label: '策略配置' },
     { path: '/auction', label: '板块' },
     { path: '/settings', label: '配置' },
   ];

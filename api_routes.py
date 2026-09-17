@@ -3,6 +3,8 @@
 """API路由模块"""
 
 from flask import jsonify, request
+import pymysql
+import pymysql.cursors
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -2241,3 +2243,62 @@ def register_routes(app):
             print(f"获取板块强度数据失败: {e}")
             return jsonify({'success': False, 'error': str(e)}), 500
 
+    # ==================== 策略全局配置 API (MySQL: qmt_duanxian_global) ====================
+
+    QMT_MYSQL_CONFIG = {
+        'host': 'rm-2zez2e4kkna47c7jhho.mysql.rds.aliyuncs.com',
+        'port': 3306,
+        'user': 'root',
+        'password': 'Aa@360wmlssw',
+        'database': 'qmt_strategy',
+        'charset': 'utf8mb4',
+        'cursorclass': pymysql.cursors.DictCursor,
+        'connect_timeout': 5,
+    }
+
+    def get_qmt_mysql_conn():
+        """获取 QMT MySQL 连接"""
+        return pymysql.connect(**QMT_MYSQL_CONFIG)
+
+    @app.route('/api/strategy-global-config', methods=['GET'])
+    def get_strategy_global_config():
+        """获取所有策略全局配置项"""
+        conn = None
+        try:
+            conn = get_qmt_mysql_conn()
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT cfg_key, cfg_value, description FROM qmt_duanxian_global ORDER BY cfg_key"
+                )
+                rows = cursor.fetchall()
+            return jsonify({'success': True, 'data': rows})
+        except Exception as e:
+            print(f"[API] 获取策略全局配置失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            if conn:
+                conn.close()
+
+    @app.route('/api/strategy-global-config/<cfg_key>', methods=['PUT'])
+    def update_strategy_global_config(cfg_key):
+        """更新指定 cfg_key 的 cfg_value"""
+        conn = None
+        try:
+            body = request.get_json(force=True)
+            cfg_value = body.get('cfg_value', '')
+            conn = get_qmt_mysql_conn()
+            with conn.cursor() as cursor:
+                affected = cursor.execute(
+                    "UPDATE qmt_duanxian_global SET cfg_value = %s WHERE cfg_key = %s",
+                    (cfg_value, cfg_key)
+                )
+            conn.commit()
+            if affected == 0:
+                return jsonify({'success': False, 'error': f'cfg_key [{cfg_key}] 不存在'}), 404
+            return jsonify({'success': True})
+        except Exception as e:
+            print(f"[API] 更新策略全局配置失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            if conn:
+                conn.close()
