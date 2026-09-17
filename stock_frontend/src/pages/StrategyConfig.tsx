@@ -129,10 +129,10 @@ export default function StrategyConfig() {
       )}
 
       {/* 表格 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+      <div className="overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+            <tr className="border-b border-gray-200 dark:border-gray-600">
               <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 w-1/4">参数名 (cfg_key)</th>
               <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 w-1/4">当前值 (cfg_value)</th>
               <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">说明</th>
@@ -149,9 +149,9 @@ export default function StrategyConfig() {
               return (
                 <tr
                   key={item.cfg_key}
-                  className={`border-b border-gray-100 dark:border-gray-700 last:border-0 transition-colors ${isEditing
+                  className={`border-b border-gray-200 dark:border-gray-700 last:border-0 transition-colors ${isEditing
                     ? 'bg-blue-50 dark:bg-blue-900/20'
-                    : idx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-750'
+                    : 'hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
                 >
                   {/* cfg_key */}
