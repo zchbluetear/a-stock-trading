@@ -7,7 +7,7 @@ export default function StrategyToggle() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  
+
   // State for adding new config
   const [isAdding, setIsAdding] = useState(false);
   const [newConfig, setNewConfig] = useState({
@@ -169,7 +169,7 @@ export default function StrategyToggle() {
                 value={newConfig.stock_code}
                 onChange={e => setNewConfig({ ...newConfig, stock_code: e.target.value })}
                 className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white dark:bg-gray-700 dark:text-white"
-                placeholder="如: 600519"
+                placeholder="如: 600519.SH"
               />
             </div>
             <div>
@@ -216,7 +216,7 @@ export default function StrategyToggle() {
         <div className={`px-4 py-2 rounded-lg text-sm ${saveMsg.ok
           ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-700'
           : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-700'
-        }`}>
+          }`}>
           {saveMsg.ok ? '✓ ' : '✗ '}{saveMsg.text}
         </div>
       )}
@@ -261,33 +261,34 @@ export default function StrategyToggle() {
                 <td className="px-4 py-3 text-center">
                   <button
                     onClick={() => handleToggle(item.id, 'strategy_enabled', item.strategy_enabled)}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-                      item.strategy_enabled === 1 ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
-                    }`}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${item.strategy_enabled === 1 ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
                   >
                     <span
-                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                        item.strategy_enabled === 1 ? 'translate-x-5' : 'translate-x-1'
-                      }`}
+                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${item.strategy_enabled === 1 ? 'translate-x-5' : 'translate-x-1'
+                        }`}
                     />
                   </button>
                 </td>
                 <td className="px-4 py-3 text-center">
                   <button
                     onClick={() => handleToggle(item.id, 'paused', item.paused)}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-                      item.paused === 1 ? 'bg-yellow-500' : 'bg-gray-300 dark:bg-gray-600'
-                    }`}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${item.paused === 1 ? 'bg-yellow-500' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
                   >
                     <span
-                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                        item.paused === 1 ? 'translate-x-5' : 'translate-x-1'
-                      }`}
+                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${item.paused === 1 ? 'translate-x-5' : 'translate-x-1'
+                        }`}
                     />
                   </button>
                 </td>
                 <td className="px-4 py-3 text-right text-xs text-gray-500 dark:text-gray-400">
-                  {new Date(item.updated_at).toLocaleString()}
+                  {item.updated_at
+                    ? new Date(item.updated_at).toLocaleString('zh-CN', {
+                      timeZone: 'UTC',
+                      hour12: false,
+                    })
+                    : '-'}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button
