@@ -158,8 +158,8 @@ export default function Home() {
       </div>
 
       {/* 辩论记录 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <div className="flex flex-wrap gap-3 items-center justify-between mb-4">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">辩论记录</h2>
             <div className="flex gap-2">
               <button
@@ -194,13 +194,13 @@ export default function Home() {
                 <Link
                   key={job.job_id}
                   to={`/ai-debate?code=${job.code}&job_id=${job.job_id}`}
-                  className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   <div>
                     <div className="font-semibold text-gray-900 dark:text-white">{job.name}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">{job.updated_at}</div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span
                       className={`text-xs px-2 py-1 rounded ${
                         job.status === 'completed'
@@ -271,7 +271,7 @@ function IndexCard({
   const isUp = changePercent >= 0;
 
   return (
-    <div className={`bg-gradient-to-r ${gradientFrom} ${gradientTo} rounded-xl shadow-lg p-6 text-white transition-transform hover:scale-105`}>
+    <div className={`bg-gradient-to-r ${gradientFrom} ${gradientTo} rounded-xl shadow-lg p-4 sm:p-6 text-white transition-transform hover:scale-105`}>
       <h3 className="text-lg font-semibold mb-4 opacity-90">{title}</h3>
       {isLoading ? (
         <div className="flex items-center justify-center py-8">

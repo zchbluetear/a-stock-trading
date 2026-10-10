@@ -88,7 +88,7 @@ export default function Tasks() {
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
+    <div className="min-w-0">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">AI 辩论任务</h1>
@@ -99,7 +99,7 @@ export default function Tasks() {
       </div>
 
       {/* 状态筛选 */}
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         <button
           onClick={() => setStatusFilter('all')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -145,15 +145,15 @@ export default function Tasks() {
                 key={job.job_id}
                 className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-3">
                       <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                         {job.name}
                       </h3>
                       {getStatusBadge(job.status)}
                     </div>
-                    <div className="mt-2 flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-gray-500 dark:text-gray-400">
                       <span>股票代码: {job.code}</span>
                       <span>·</span>
                       <span>创建时间: {new Date(job.created_at).toLocaleString('zh-CN')}</span>
@@ -183,7 +183,7 @@ export default function Tasks() {
                       </div>
                     )}
                   </div>
-                  <div className="ml-4 flex gap-2">
+                  <div className="flex flex-wrap gap-2 sm:ml-4">
                     <button
                       onClick={() => handleViewJob(job.job_id, job.code)}
                       className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"

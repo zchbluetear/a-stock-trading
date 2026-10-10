@@ -177,15 +177,15 @@ export default function Watchlist() {
       </div>
 
       {/* 添加自选股 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
         <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">添加自选股</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <input
             type="text"
             value={codeInput}
             onChange={(e) => setCodeInput(e.target.value)}
             placeholder="输入6位股票代码，如：000001"
-            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+            className="min-w-0 flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
             maxLength={6}
           />
           <button
@@ -200,7 +200,7 @@ export default function Watchlist() {
 
       {/* 自选股列表 */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">我的自选</h2>
           {loading ? (
             <div className="text-center py-8 text-gray-500">加载中...</div>
@@ -228,7 +228,7 @@ export default function Watchlist() {
       {showMultiModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">多选一 AI分析</h2>
               <button
                 onClick={() => {
@@ -242,7 +242,7 @@ export default function Watchlist() {
                 </svg>
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 本模式要求从所选股票中<strong>必须选择一只</strong>进行买入决策。
               </div>
@@ -393,7 +393,7 @@ function WatchlistItem({
   };
 
   return (
-    <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+    <div className="flex flex-wrap items-start gap-y-3 sm:items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
       <div className="mr-3">
         <input
           type="checkbox"
@@ -405,7 +405,7 @@ function WatchlistItem({
           className="rounded"
         />
       </div>
-      <Link to={`/stock/${item.code}`} className="flex-1 flex items-center justify-between">
+      <Link to={`/stock/${item.code}`} className="min-w-0 flex-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex-1">
           <div className="font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
             {item.name || item.code}
@@ -467,7 +467,7 @@ function WatchlistItem({
         )}
       </Link>
 
-      <div className="ml-4 flex items-center gap-2">
+      <div className="w-full flex flex-wrap justify-end items-center gap-2 sm:ml-4 sm:w-auto">
         <button
           onClick={(e) => {
             e.preventDefault();

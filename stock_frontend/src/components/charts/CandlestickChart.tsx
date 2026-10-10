@@ -615,9 +615,9 @@ export default function CandlestickChart({ code, buyZones, sellZones, indicators
   }
 
   return (
-    <div className="relative w-full h-[600px]">
+    <div className="relative w-full min-w-0">
       {/* K线类型切换按钮 */}
-      <div className="absolute top-3 right-3 z-20 flex gap-2 flex-wrap">
+      <div className="relative mb-3 flex flex-wrap gap-2 sm:absolute sm:top-3 sm:right-3 sm:z-20 sm:mb-0">
         <button
           onClick={() => setKlineType('daily')}
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
@@ -663,7 +663,7 @@ export default function CandlestickChart({ code, buyZones, sellZones, indicators
       {/* 图例 - 放在左上角 */}
       <div
         ref={legendRef}
-        className="absolute top-3 left-3 z-10 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-md text-sm font-mono"
+        className="relative mb-3 break-words sm:absolute sm:top-14 sm:left-3 sm:right-3 sm:z-10 sm:mb-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-md text-sm font-mono"
         style={{
           pointerEvents: 'none',
         }}
@@ -671,7 +671,7 @@ export default function CandlestickChart({ code, buyZones, sellZones, indicators
         {/* 初始内容会在useEffect中更新 */}
       </div>
       {/* 图表容器 */}
-      <div ref={chartContainerRef} className="w-full h-full" />
+      <div ref={chartContainerRef} className="w-full h-[600px]" />
     </div>
   );
 }

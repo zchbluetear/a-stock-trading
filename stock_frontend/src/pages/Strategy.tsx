@@ -164,12 +164,12 @@ export default function Strategy() {
   };
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
+    <div className="min-w-0">
       {/* 策略卡片 - 始终显示 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* 强势股策略 */}
-        <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl p-4 sm:p-6 text-white shadow-lg">
+          <div className="flex flex-wrap gap-3 items-center justify-between mb-4">
             <h2 className="text-2xl font-bold">强势股策略</h2>
             {isLoading ? (
               <div className="text-right">
@@ -221,7 +221,7 @@ export default function Strategy() {
         </div>
 
         {/* 其他策略待开发 */}
-        <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-xl p-6 shadow-lg flex items-center justify-center">
+        <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-xl p-4 sm:p-6 shadow-lg flex items-center justify-center">
           <div className="text-center">
             <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -242,9 +242,9 @@ export default function Strategy() {
       </div> */}
 
       {/* 筛选结果标题和刷新按钮 - 始终显示 */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">筛选结果</h2>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {selectedCodes.length >= 2 && (
             <button
               onClick={handleOpenMulti}
@@ -294,8 +294,9 @@ export default function Strategy() {
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <p className="px-3 pt-3 mb-2 text-xs text-gray-500 dark:text-gray-400 lg:hidden">左右滑动表格，查看完整信息</p>
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="可横向滚动的数据表格">
+            <table className="min-w-full whitespace-nowrap divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-900">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -471,7 +472,7 @@ export default function Strategy() {
       {showMultiModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">多选一 AI分析</h2>
               <button
                 onClick={() => {
@@ -485,7 +486,7 @@ export default function Strategy() {
                 </svg>
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 本模式要求从所选股票中<strong>必须选择一只</strong>进行买入决策。
               </div>

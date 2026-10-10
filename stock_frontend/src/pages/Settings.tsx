@@ -127,7 +127,7 @@ export default function Settings() {
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white">系统配置</h1>
 
       {/* 后端地址配置 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
         <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">后端地址</h2>
         <div className="space-y-4">
           <div>
@@ -146,7 +146,7 @@ export default function Settings() {
       </div>
 
       {/* AI服务配置 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
         <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">AI服务配置</h2>
         <div className="space-y-4">
           {/* 服务商选择 */}
@@ -323,14 +323,14 @@ function AgentConfigSection() {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
         <div className="text-center py-8 text-gray-500">加载中...</div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
       <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Agent配置</h2>
       <div className="space-y-4">
         {agents.map((agent) => (

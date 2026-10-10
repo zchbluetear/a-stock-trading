@@ -77,7 +77,7 @@ export default function StrategyConfig() {
 
   if (error) {
     return (
-      <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-6">
+      <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 sm:p-6">
         <p className="font-semibold text-red-700 dark:text-red-400 mb-1">连接 MySQL 失败</p>
         <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
         <button
@@ -93,8 +93,8 @@ export default function StrategyConfig() {
   return (
     <div className="space-y-4">
       {/* 顶部工具栏 */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full sm:flex-1 sm:max-w-sm">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
           </svg>
@@ -129,8 +129,9 @@ export default function StrategyConfig() {
       )}
 
       {/* 表格 */}
-      <div className="overflow-hidden">
-        <table className="w-full text-sm">
+      <p className="mb-2 text-xs text-gray-500 dark:text-gray-400 lg:hidden">左右滑动表格，查看完整信息</p>
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="可横向滚动的数据表格">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-gray-200 dark:border-gray-600">
               <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 w-1/4">参数名 (cfg_key)</th>

@@ -53,3 +53,31 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer base {
+  /* Allow narrow flex/grid children and long API/report text to fit the viewport. */
+  #root {
+    min-width: 0;
+  }
+
+  main {
+    overflow-wrap: anywhere;
+  }
+
+  input, select, textarea {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+@layer components {
+  .markdown-body {
+    min-width: 0;
+    overflow-x: auto;
+  }
+
+  .markdown-body pre {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}

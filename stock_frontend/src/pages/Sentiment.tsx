@@ -142,7 +142,7 @@ export default function Sentiment() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap gap-3 items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">市场情绪</h1>
         {summary && (
           <div className="flex items-center space-x-2">
@@ -194,7 +194,7 @@ export default function Sentiment() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+      <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">历史情绪趋势 (30天平滑分)</h2>
         <div className="w-full relative" style={{ height: '400px' }}>
           <div ref={chartContainerRef} className="absolute inset-0" />

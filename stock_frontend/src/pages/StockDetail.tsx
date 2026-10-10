@@ -79,7 +79,7 @@ export default function StockDetail() {
   return (
     <div className="space-y-6">
       {/* 标题 */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap gap-3 items-start justify-between">
         <div>
           <h1 className={`text-3xl font-bold ${
             (realtimeData?.change_percent ?? 0) >= 0
@@ -95,11 +95,11 @@ export default function StockDetail() {
 
       {/* 实时行情卡片 */}
       {realtimeLoading && comprehensiveLoading ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <LoadingSpinner text="加载实时行情..." />
         </div>
       ) : (realtimeData || comprehensiveData?.realtime) ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">实时行情</h2>
           {/* 优先使用comprehensiveData中的实时数据（包含换手率），如果没有则使用realtimeData */}
           {(() => {
@@ -169,7 +169,7 @@ export default function StockDetail() {
       ) : null}
 
       {/* K线图 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
         <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">K线图</h2>
         {dailyLoading ? (
           <LoadingSpinner text="加载K线数据..." />
@@ -188,7 +188,7 @@ export default function StockDetail() {
 
       {/* 技术指标 */}
       {comprehensiveData?.indicators && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">技术指标</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {comprehensiveData.indicators.MA && Object.entries(comprehensiveData.indicators.MA).map(([key, value]: [string, any]) => (
@@ -251,7 +251,7 @@ export default function StockDetail() {
 
       {/* 基本面数据 */}
       {comprehensiveData?.fundamental && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">基本面数据</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {comprehensiveData.fundamental.pe && (
@@ -292,7 +292,7 @@ export default function StockDetail() {
 
       {/* 行业对比 */}
       {comprehensiveData?.industry_comparison && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">行业对比</h2>
           <div className="space-y-2">
             {comprehensiveData.industry_comparison.industry_name && (
@@ -330,7 +330,7 @@ export default function StockDetail() {
 
       {/* 今日资金流向 */}
       {comprehensiveData?.money_flow && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">今日资金流向</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {comprehensiveData.money_flow.main_net_inflow != null && (
@@ -419,13 +419,14 @@ export default function StockDetail() {
 
       {/* 历史资金流向 */}
       {moneyFlowHistoryLoading ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <LoadingSpinner text="加载历史资金流向..." />
         </div>
       ) : moneyFlowHistory && moneyFlowHistory.length > 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">历史资金流向（近60天）</h2>
-          <div className="overflow-x-auto">
+          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400 lg:hidden">左右滑动表格，查看完整信息</p>
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="可横向滚动的数据表格">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
@@ -482,11 +483,11 @@ export default function StockDetail() {
 
       {/* 舆情数据 */}
       {sentimentLoading ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <LoadingSpinner text="加载舆情数据..." />
         </div>
       ) : sentimentData ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">舆情数据</h2>
           
           {/* 新闻 */}
@@ -553,7 +554,7 @@ export default function StockDetail() {
       ) : null}
 
       {/* Agent分析区域（待实现） */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
         <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">AI分析</h2>
         <p className="text-gray-500 dark:text-gray-400">Agent分析功能开发中...</p>
       </div>

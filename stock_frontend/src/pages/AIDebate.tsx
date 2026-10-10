@@ -95,7 +95,7 @@ export default function AIDebate() {
 
   if (!code && !jobId) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
         <div className="text-center text-gray-500">
           缺少股票代码或任务ID，请从AI分析入口进入。
         </div>
@@ -164,7 +164,7 @@ export default function AIDebate() {
           .markdown-body blockquote { border-left: 3px solid #cbd5e1; padding-left: 0.75rem; color: #6b7280; margin: 0.5rem 0; }
         `}
       </style>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap gap-3 items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             TradingAgents 辩论分析 - {displayName || '未知股票'}
@@ -173,7 +173,7 @@ export default function AIDebate() {
             {modeLabel} · 思考{effectiveAnalysisRounds} / 辩论{effectiveDebateRounds}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={handleStop}
             disabled={!jobId || status === 'completed' || status === 'failed' || status === 'canceled'}
@@ -192,7 +192,7 @@ export default function AIDebate() {
       </div>
 
       {/* 进度条 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
         <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
           进度提示：多轮分析与辩论可能耗时较长（约10分钟），可离开页面后稍后回来查看
         </div>
@@ -218,7 +218,7 @@ export default function AIDebate() {
       </div>
 
       {/* 思考过程 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
         <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
           专家思考过程（可滚动）
         </h2>
@@ -244,7 +244,7 @@ export default function AIDebate() {
                 <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
                   {group.items.map((step, index) => (
                     <div key={`${step.phase}-${step.round}-${step.agent_id}-${index}`} className="border border-gray-100 dark:border-gray-700 rounded p-2">
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex flex-wrap gap-3 items-center justify-between mb-1">
                         <span className="text-xs px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
                           {step.phase === 'analysis' ? '分析' : '辩论'} · 第{step.round}轮
                         </span>
@@ -263,7 +263,7 @@ export default function AIDebate() {
       </div>
 
       {/* 基础信息 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
         <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">基础信息（接口数据）</h2>
         {isMultiSelect ? (
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
@@ -346,8 +346,8 @@ export default function AIDebate() {
       </div>
 
       {/* 最终报告 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+        <div className="flex flex-wrap gap-3 items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">研究报告（Markdown）</h2>
           <button
             onClick={handleExport}

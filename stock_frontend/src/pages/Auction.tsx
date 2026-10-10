@@ -115,10 +115,10 @@ export default function Auction() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">涨停股实时监控</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">涨停股实时监控</h1>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-3">
           {selectedCodes.length >= 2 && (
             <button
               onClick={handleOpenMulti}
@@ -146,8 +146,9 @@ export default function Auction() {
         </div>
       ) : stocks && stocks.length > 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <p className="px-3 pt-3 mb-2 text-xs text-gray-500 dark:text-gray-400 lg:hidden">左右滑动表格，查看完整信息</p>
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="可横向滚动的数据表格">
+            <table className="min-w-full whitespace-nowrap divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-10">选择</th>
@@ -240,7 +241,7 @@ export default function Auction() {
           </div>
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center text-gray-500 dark:text-gray-400">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 text-center text-gray-500 dark:text-gray-400">
           数据连接中或暂无数据...
         </div>
       )}
@@ -249,7 +250,7 @@ export default function Auction() {
       {showMultiModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">多选一 AI分析</h2>
               <button
                 onClick={() => {
@@ -263,7 +264,7 @@ export default function Auction() {
                 </svg>
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 本模式要求从所选股票中<strong>必须选择一只</strong>进行买入决策。
               </div>
