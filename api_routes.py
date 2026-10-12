@@ -141,6 +141,8 @@ def run_single_stock_volume_prediction_task(code: str):
 
 def register_routes(app):
     """注册所有API路由"""
+    from sector_research import register_sector_routes
+    register_sector_routes(app)
     
     @app.route('/')
     def index():

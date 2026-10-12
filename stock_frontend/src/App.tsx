@@ -5,6 +5,7 @@ import Watchlist from './pages/Watchlist';
 import StockDetail from './pages/StockDetail';
 import Tasks from './pages/Tasks';
 import Sentiment from './pages/Sentiment';
+import SectorResearch from './pages/SectorResearch';
 import Strategy from './pages/Strategy';
 import StrategyConfig from './pages/StrategyConfig';
 import StrategyToggle from './pages/StrategyToggle';
@@ -35,6 +36,7 @@ function App() {
             <Route path="/stock/:code" element={<StockDetail />} />
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/sentiment" element={<Sentiment />} />
+            <Route path="/sectors" element={<SectorResearch />} />
             <Route path="/strategy" element={<Strategy />} />
             <Route path="/strategy-config" element={<StrategyConfig />} />
             <Route path="/strategy-toggle" element={<StrategyToggle />} />
