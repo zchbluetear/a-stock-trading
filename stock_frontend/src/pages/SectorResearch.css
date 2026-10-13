@@ -1,10 +1,10 @@
 .sector-research {
-  --sr-ink:#203631;
-  --sr-muted:#7a8983;
-  --sr-border:#e2e9e5;
+  --sr-ink:#111827;
+  --sr-muted:#6b7280;
+  --sr-border:#e5e7eb;
   --sr-paper:#fff;
-  --sr-soft:#f3f6f3;
-  --sr-accent:#146b56;
+  --sr-soft:#f9fafb;
+  --sr-accent:#2563eb;
   color:var(--sr-ink);
   font-size:14px;
   padding-top:12px;
@@ -25,7 +25,7 @@
 }
 
 .sector-research button:focus-visible,.sector-research a:focus-visible,.sector-research select:focus-visible,.sector-research input:focus-visible {
-  outline:2px solid #168969;
+  outline:2px solid #3b82f6;
   outline-offset:3px;
 }
 
@@ -46,7 +46,7 @@
 }
 
 .sr-title-dot {
-  color:#218668;
+  color:#2563eb;
   margin-left:3px;
 }
 
@@ -76,9 +76,9 @@
 }
 
 .sr-primary {
-  background:var(--sr-accent);
+  background:#2563eb;
   color:white;
-  border-color:var(--sr-accent);
+  border-color:#2563eb;
 }
 
 .sr-primary>span {
@@ -113,7 +113,7 @@
 }
 
 .sr-source button.active {
-  background:var(--sr-ink);
+  background:#2563eb;
   color:#fff;
   box-shadow:0 2px 4px #0001;
 }
@@ -183,7 +183,7 @@
   width:5px;
   height:5px;
   border-radius:50%;
-  background:#7d9585;
+  background:#9ca3af;
   margin-right:6px;
 }
 
@@ -191,9 +191,9 @@
   display:flex;
   gap:10px;
   align-items:center;
-  background:#faf5e9;
-  color:#8c6b2e;
-  border:1px solid #efe5ce;
+  background:#fffbeb;
+  color:#b45309;
+  border:1px solid #fde68a;
   border-radius:6px;
   padding:10px 13px;
   font-size:12px;
@@ -201,9 +201,9 @@
 }
 
 .sr-error {
-  background:#fff1ee;
-  border-color:#f1d9d1;
-  color:#a84936;
+  background:#fef2f2;
+  border-color:#fecaca;
+  color:#b91c1c;
   flex-wrap:wrap;
 }
 
@@ -356,7 +356,7 @@
 }
 
 .sr-table tr.selected {
-  background:#edf6f1;
+  background:#eff6ff;
 }
 
 .sr-table tr:hover {
@@ -402,11 +402,11 @@
 }
 
 .sr-up {
-  color:#b77537;
+  color:#dc2626;
 }
 
 .sr-down {
-  color:#348777;
+  color:#16a34a;
 }
 
 .sr-muted {
@@ -421,8 +421,8 @@
 }
 
 .sr-tag-new {
-  color:#967129;
-  background:#f8efd8;
+  color:#b45309;
+  background:#fef3c7;
 }
 
 .sr-mini {
@@ -442,15 +442,15 @@
 }
 
 .sr-mini-ranked {
-  background:#28785e;
+  background:#3b82f6;
 }
 
 .sr-mini-empty {
-  background:#dce4df;
+  background:#e5e7eb;
 }
 
 .sr-mini-unknown {
-  background:#d7b47b;
+  background:#fbbf24;
 }
 
 .sr-table-foot {
@@ -540,28 +540,28 @@
 }
 
 .sr-heat-strong {
-  background:#286a53;
+  background:#2563eb;
   color:white;
 }
 
 .sr-heat-mid {
-  background:#8aba9e;
-  color:#244f3b;
+  background:#93c5fd;
+  color:#1e3a8a;
 }
 
 .sr-heat-light {
-  background:#dcecdf;
-  color:#54775d;
+  background:#dbeafe;
+  color:#1e40af;
 }
 
 .sr-heat-empty {
   background:var(--sr-soft);
-  color:#abb9af;
+  color:#9ca3af;
 }
 
 .sr-heat-unknown {
-  background:#f4e9d7;
-  color:#a37d46;
+  background:#fef3c7;
+  color:#b45309;
 }
 
 .sr-footer {
@@ -627,51 +627,80 @@
 }
 
 .dark .sector-research {
-  --sr-ink:#e0eae3;
-  --sr-muted:#94a89c;
-  --sr-border:#35453d;
-  --sr-paper:#1c2a24;
-  --sr-soft:#24382e;
-  --sr-accent:#8fc7ac;
+  --sr-ink:#f9fafb;
+  --sr-muted:#9ca3af;
+  --sr-border:#374151;
+  --sr-paper:#1f2937;
+  --sr-soft:#374151;
+  --sr-accent:#60a5fa;
 }
 
 .dark .sr-source button.active {
-  background:#365945;
-  color:#e8f3ed;
+  background:#2563eb;
+  color:#fff;
 }
 
 .dark .sr-primary {
-  background:#376b53;
+  background:#2563eb;
   color:white;
 }
 
 .dark .sr-table tr.selected {
-  background:#294335;
+  background:#1e3a8a;
 }
 
 .dark .sr-notice {
-  background:#3b3424;
-  color:#d8c59c;
-  border-color:#5a4b2b;
+  background:#451a03;
+  color:#fcd34d;
+  border-color:#92400e;
 }
 
 .dark .sr-error {
-  background:#422c28;
-  color:#e4b3aa;
-  border-color:#67473b;
+  background:#450a0a;
+  color:#f87171;
+  border-color:#991b1b;
 }
 
 .dark .sr-tag-new {
-  background:#4e4227;
-  color:#e0cc93;
+  background:#451a03;
+  color:#fcd34d;
 }
 
 .dark .sr-up {
-  color:#ddad70;
+  color:#f87171;
 }
 
 .dark .sr-down {
-  color:#83c5a8;
+  color:#4ade80;
+}
+
+/* Shared blue interaction colors and dark-mode rank contrast. */
+.sector-research .sr-primary:hover:not(:disabled) {
+  background:#1d4ed8;
+  border-color:#1d4ed8;
+}
+
+.dark .sr-title-dot {
+  color:var(--sr-accent);
+}
+
+.dark .sr-mini-empty {
+  background:#4b5563;
+}
+
+.dark .sr-heat-mid {
+  background:#1e40af;
+  color:#dbeafe;
+}
+
+.dark .sr-heat-light {
+  background:rgb(30 58 138 / 40%);
+  color:#93c5fd;
+}
+
+.dark .sr-heat-unknown {
+  background:rgb(120 53 15 / 30%);
+  color:#fcd34d;
 }
 
 @media(min-width:1280px) {
