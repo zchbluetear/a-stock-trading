@@ -143,6 +143,8 @@ def register_routes(app):
     """注册所有API路由"""
     from sector_research import register_sector_routes
     register_sector_routes(app)
+    from market_movers import register_market_mover_routes
+    register_market_mover_routes(app)
     
     @app.route('/')
     def index():

@@ -14,6 +14,7 @@ export default function Layout({ children }: LayoutProps) {
     { path: '/tasks', label: '任务' },
     { path: '/sentiment', label: '情绪' },
     { path: '/sectors', label: '板块强度' },
+    { path: '/market-movers', label: '板块强势股' },
     { path: '/strategy', label: '策略' },
     { path: '/strategy-config', label: '策略配置' },
     { path: '/strategy-toggle', label: '策略启停' },

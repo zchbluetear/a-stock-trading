@@ -3,6 +3,21 @@
  */
 
 // 动态获取当前主机名，这样无论是本地调试(localhost)还是云服务器部署(公网IP)，都不需要手动修改
+export interface MoverStock {
+  code: string; name: string; price: number; change_percent: number;
+  amount: number | null; industry: string; concepts: string[];
+  limit_up: boolean; limit_known: boolean; quote_time: string;
+}
+export interface MarketMoversResponse {
+  snapshot: {
+    stocks: MoverStock[]; total: number; invalid_count: number;
+    limit_unknown_count: number; quote_dates: string[]; quote_time: string;
+    limit_up_count: number; gainer_count: number; fetched_at: string;
+  } | null;
+  refreshing: boolean; error: string | null; stale: boolean;
+  interval_seconds: number; last_attempt: string | null; scan_seconds: number | null;
+}
+
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5001`;
 
 export interface StockRealtime {
@@ -399,6 +414,10 @@ class StockAPI {
   }
 
 
+
+  async getMarketMovers(): Promise<MarketMoversResponse> {
+    return this.request<MarketMoversResponse>('/api/market/movers');
+  }
 
   // 板块强度API
   async getAuctionSectors(): Promise<any[]> {
