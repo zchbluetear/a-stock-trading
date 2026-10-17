@@ -7,7 +7,7 @@ import './SectorResearch.css';
 type Filter = 'today' | 'persistent' | 'all';
 type Sort = 'rank' | 'appearances' | 'change';
 const filters: { value: Filter; label: string }[] = [
-  { value: 'persistent', label: '持续活跃' }, { value: 'today', label: '当日上榜' },
+  { value: 'today', label: '当日上榜' }, { value: 'persistent', label: '持续活跃' },
 ];
 function RankChange({ row }: { row: SectorRow }) {
   if (row.is_new) return <span className="sr-tag sr-tag-new">新进</span>;
@@ -24,7 +24,7 @@ function MiniHistory({ row }: { row: SectorRow }) {
 }
 export default function SectorResearch() {
   const [source, setSource] = useState<SectorSource>('kaipan');
-  const [window, setWindow] = useState(10);
+  const [window, setWindow] = useState(5);
   const [date, setDate] = useState('');
   const [filter, setFilter] = useState<Filter>('today');
   const [sort, setSort] = useState<Sort>('rank');
@@ -78,13 +78,12 @@ export default function SectorResearch() {
           <div className="sr-table-tools"><label className="sr-search"><span>⌕</span><input aria-label="搜索板块" placeholder="搜索板块名称或代码" value={search} onChange={e => setSearch(e.target.value)} /></label>
             <label><span className="sr-sr-only">排序方式</span><select value={sort} onChange={e => setSort(e.target.value as Sort)}><option value="rank">按当日排名</option><option value="appearances">按上榜次数</option><option value="change">按排名提升</option></select></label></div>
           <p className="sr-scroll-hint">左右滑动表格，查看完整排名和近期轨迹</p>
-          <div className="sr-table-scroll" tabIndex={0} role="region" aria-label="板块排名表"><table className="sr-table"><thead><tr><th>排名 / 板块</th><th>排名变化 <span>（对比上一日）</span></th><th>上榜次数</th><th>近期轨迹</th></tr></thead><tbody>
+          <div className="sr-table-scroll" tabIndex={0} role="region" aria-label="板块排名表"><table className="sr-table"><thead><tr><th>排名 / 板块</th><th>排名变化</th><th>上榜次数</th><th>近期轨迹</th></tr></thead><tbody>
             {rows.map(r => <tr key={r.code}>
-              <td><div className="sr-row-select"><span className={`sr-rank ${r.rank && r.rank <= 3 ? 'sr-rank-top' : ''}`}>{r.rank ?? '—'}</span><span><strong>{r.name}</strong><small>{r.code}{r.streak >= 3 ? ` · 连续 ${r.streak} 次` : ''}</small></span></div></td>
+              <td><div className="sr-row-select"><span className={`sr-rank ${r.rank && r.rank <= 3 ? 'sr-rank-top' : ''}`}>{r.rank ?? '—'}</span><span className="sr-sector-name"><strong>{r.name}</strong><small>{r.code}{r.streak >= 3 ? ` · 连续 ${r.streak} 次` : ''}</small></span></div></td>
               <td><RankChange row={r} /></td><td><strong>{r.appearances}</strong><span className="sr-muted"> / {data.complete_count}</span></td><td><MiniHistory row={r} /></td>
             </tr>)}
           </tbody></table></div>
-          {!rows.length && <div className="sr-empty"><strong>没有符合条件的板块</strong><p>尝试其他筛选条件或清空搜索。</p><button onClick={() => { setSearch(''); setFilter('today'); }}>重置筛选</button></div>}
         </section>
 
       </div>

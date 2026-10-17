@@ -76,15 +76,15 @@ export default function Strategy() {
     }
   }, [showMultiModal, agents, selectedAgentIds.length]);
 
-  // 格式化涨停时间显示（将092500转为09:25:00）
+  // 格式化涨停时间显示到分钟（将092500转为09:25）
   const formatLimitTime = (time: string | null | undefined): string => {
     if (!time) return '-';
     const str = String(time);
-    if (str.includes(':')) return str;
+    if (str.includes(':')) return str.slice(0, 5);
     if (str.length === 6) {
-      return `${str.slice(0, 2)}:${str.slice(2, 4)}:${str.slice(4, 6)}`;
+      return `${str.slice(0, 2)}:${str.slice(2, 4)}`;
     } else if (str.length === 5) {
-      return `0${str.slice(0, 1)}:${str.slice(1, 3)}:${str.slice(3, 5)}`;
+      return `0${str.slice(0, 1)}:${str.slice(1, 3)}`;
     }
     return str;
   };
@@ -158,8 +158,7 @@ export default function Strategy() {
       <div className="mb-4 w-full min-w-0">
         <div className="flex w-full min-w-0 flex-nowrap items-center justify-between gap-1 sm:gap-3">
         <h2 className="min-w-0 shrink-0 whitespace-nowrap text-xs font-semibold text-gray-900 dark:text-white sm:text-xl">
-          <span className="sm:hidden">2连板首阴筛选</span>
-          <span className="hidden sm:inline">2连板首阴策略筛选</span>
+          <span>2连板分歧</span>
           {data && <span className="ml-1 text-[10px] font-normal text-gray-500 dark:text-gray-400 sm:ml-2 sm:text-sm">共{data.count}只</span>}
         </h2>
         <div className="flex min-w-0 shrink-0 flex-nowrap items-center gap-1 sm:gap-3">
@@ -232,29 +231,29 @@ export default function Strategy() {
             <table className="min-w-full whitespace-nowrap divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-900">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     名称
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     所属板块
                   </th>
 
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    涨停时间
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    T-1/T-2
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     强度类型
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     250日振幅
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     突破60日平台
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     当前价
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     操作
                   </th>
                 </tr>
@@ -262,43 +261,36 @@ export default function Strategy() {
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {data.stocks.map((stock) => (
                   <tr key={stock.code} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                    <td className="min-w-[150px] px-4 py-3 text-sm text-gray-900 dark:text-white">
-                      <div className="font-medium">
-                        {stock.name}（{stock.code}）
+                    <td className="min-w-[150px] px-4 py-2.5 text-sm text-gray-900 dark:text-white">
+                      <div className="flex items-center gap-2 whitespace-nowrap font-medium">
+                        <span>{stock.name}</span>
+                        <span className={`text-xs font-semibold ${stock.change_percent == null
+                          ? 'text-gray-400 dark:text-gray-500'
+                          : stock.change_percent >= 0
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-green-600 dark:text-green-400'
+                        }`}>
+                          {stock.change_percent != null
+                            ? `${stock.change_percent >= 0 ? '+' : ''}${stock.change_percent.toFixed(2)}%`
+                            : '-'}
+                        </span>
                         {stock.consecutive_days > 0 && (
                           <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 align-middle text-xs font-bold ${continuousBadgeClass(stock.consecutive_days)}`}>
                             {stock.consecutive_days}连板
                           </span>
                         )}
                       </div>
-                      <div className={`mt-1 text-xs font-semibold ${stock.change_percent == null
-                        ? 'text-gray-400 dark:text-gray-500'
-                        : stock.change_percent >= 0
-                          ? 'text-red-600 dark:text-red-400'
-                          : 'text-green-600 dark:text-green-400'
-                      }`}>
-                        {stock.change_percent != null
-                          ? `${stock.change_percent >= 0 ? '+' : ''}${stock.change_percent.toFixed(2)}%`
-                          : '-'}
-                      </div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {stock.sector_name || stock.industry || '-'}
                     </td>
 
-                    <td className="px-4 py-3 text-sm">
-                      <div className="space-y-1 whitespace-nowrap">
-                        <div className="text-gray-600 dark:text-gray-300">
-                          <span className="mr-2 text-xs text-gray-400 dark:text-gray-500">T-1</span>
-                          {formatLimitTime(stock.t1_limit_time)}
-                        </div>
-                        <div className="text-gray-600 dark:text-gray-300">
-                          <span className="mr-2 text-xs text-gray-400 dark:text-gray-500">T-2</span>
-                          {formatLimitTime(stock.t2_limit_time)}
-                        </div>
+                    <td className="px-4 py-2.5 text-sm">
+                      <div className="whitespace-nowrap text-gray-600 dark:text-gray-300">
+                        {formatLimitTime(stock.t1_limit_time)} / {formatLimitTime(stock.t2_limit_time)}
                       </div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-sm">
                       {stock.strength_type ? (
                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${stock.strength_type === 'T字缩量'
                             ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
@@ -312,14 +304,14 @@ export default function Strategy() {
                         </span>
                       ) : '-'}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {stock.amplitude_250 != null ? (
                         <span className={stock.amplitude_250 >= 2.0 ? 'text-orange-500 font-medium' : ''}>
                           {stock.amplitude_250}x
                         </span>
                       ) : '-'}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-sm">
                       {stock.breakout_60 === null ? '-'
                         : stock.breakout_60 ? (
                           <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
@@ -331,10 +323,10 @@ export default function Strategy() {
                           </span>
                         )}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                       {stock.current_price ? `¥${stock.current_price.toFixed(2)}` : '-'}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
