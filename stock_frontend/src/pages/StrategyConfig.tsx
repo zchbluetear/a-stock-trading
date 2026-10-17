@@ -94,7 +94,7 @@ export default function StrategyConfig() {
     <div className="space-y-4">
       {/* 顶部工具栏 */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-full sm:flex-1 sm:max-w-sm">
+        <div className="relative w-full sm:w-48">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
           </svg>
@@ -129,38 +129,39 @@ export default function StrategyConfig() {
       )}
 
       {/* 表格 */}
-      <p className="mb-2 text-xs text-gray-500 dark:text-gray-400 lg:hidden">左右滑动表格，查看完整信息</p>
-      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="可横向滚动的数据表格">
-        <table className="w-full min-w-[760px] text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 dark:border-gray-600">
-              <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">字段</th>
-              <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300 w-1/4">当前值</th>
-              <th className="px-4 py-2 w-24"></th>
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow dark:border-gray-700 dark:bg-gray-800">
+        <p className="px-3 pt-3 mb-2 text-xs text-gray-500 dark:text-gray-400 lg:hidden">左右滑动表格，查看完整信息</p>
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="可横向滚动的数据表格">
+          <table className="w-full min-w-[760px] table-fixed whitespace-nowrap divide-y divide-gray-200 text-sm dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900">
+              <tr>
+                <th className="w-[38%] px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">字段</th>
+                <th className="w-[32%] px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">当前值</th>
+                <th className="w-24 px-4 py-3"></th>
             </tr>
-          </thead>
-          <tbody>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={3} className="text-center py-8 text-gray-400 dark:text-gray-500">暂无匹配数据</td>
+                  <td colSpan={3} className="py-8 text-center text-gray-400 dark:text-gray-500">暂无匹配数据</td>
               </tr>
             ) : filtered.map((item, idx) => {
               const isEditing = editRow?.cfg_key === item.cfg_key;
               return (
                 <tr
                   key={item.cfg_key}
-                  className={`border-b border-gray-200 dark:border-gray-700 last:border-0 transition-colors ${isEditing
+                  className={`transition-colors ${isEditing
                     ? 'bg-blue-50 dark:bg-blue-900/20'
-                    : 'hover:bg-black/5 dark:hover:bg-white/5'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
                   }`}
                 >
                   {/* 字段 */}
-                  <td className="px-4 py-2 text-gray-500 dark:text-gray-400">
+                  <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
                     {item.description ?? <span className="italic text-gray-300 dark:text-gray-600">—</span>}
                   </td>
 
                   {/* 当前值 */}
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-2 text-sm">
                     {isEditing ? (
                       <input
                         type="text"
@@ -176,7 +177,7 @@ export default function StrategyConfig() {
                   </td>
 
                   {/* 操作 */}
-                  <td className="px-4 py-2 text-right">
+                  <td className="px-4 py-2 text-right text-sm">
                     {isEditing ? (
                       <div className="flex flex-nowrap justify-end gap-1.5 whitespace-nowrap">
                         <button
@@ -207,7 +208,8 @@ export default function StrategyConfig() {
               );
             })}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   );
