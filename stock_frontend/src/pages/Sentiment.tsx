@@ -17,10 +17,11 @@ export function SentimentDashboard() {
   useEffect(() => {
     if (!chartContainerRef.current || !sentimentData?.history || sentimentData.history.length === 0) return;
 
+    const isDark = document.documentElement.classList.contains('dark');
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#9ca3af',
+        textColor: isDark ? '#9ca3af' : '#6b7280',
       },
       width: chartContainerRef.current.clientWidth,
       height: chartContainerRef.current.clientHeight,
@@ -28,15 +29,17 @@ export function SentimentDashboard() {
         mode: CrosshairMode.Normal,
       },
       grid: {
-        vertLines: { color: 'rgba(156, 163, 175, 0.1)' },
-        horzLines: { color: 'rgba(156, 163, 175, 0.1)' },
+        vertLines: { color: isDark ? 'rgba(156, 163, 175, 0.08)' : 'rgba(107, 114, 128, 0.08)' },
+        horzLines: { color: isDark ? 'rgba(156, 163, 175, 0.12)' : 'rgba(107, 114, 128, 0.12)' },
       },
       timeScale: {
-        borderColor: 'rgba(156, 163, 175, 0.2)',
-        timeVisible: true,
+        borderColor: isDark ? 'rgba(156, 163, 175, 0.2)' : 'rgba(107, 114, 128, 0.2)',
+        timeVisible: false,
+        barSpacing: 22,
+        minBarSpacing: 18,
       },
       rightPriceScale: {
-        borderColor: 'rgba(156, 163, 175, 0.2)',
+        borderColor: isDark ? 'rgba(156, 163, 175, 0.2)' : 'rgba(107, 114, 128, 0.2)',
         autoScale: false,
         scaleMargins: {
           top: 0.1,
@@ -45,9 +48,13 @@ export function SentimentDashboard() {
       },
     });
 
-    const series = chart.addLineSeries({
-      color: '#3b82f6',
-      lineWidth: 2,
+    const series = chart.addAreaSeries({
+      lineColor: '#2563eb',
+      topColor: 'rgba(37, 99, 235, 0.24)',
+      bottomColor: 'rgba(37, 99, 235, 0.015)',
+      lineWidth: 3,
+      priceLineVisible: false,
+      lastValueVisible: true,
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 4,
       crosshairMarkerBorderColor: '#fff',
@@ -58,6 +65,17 @@ export function SentimentDashboard() {
           maxValue: 100,
         },
       }),
+    });
+
+    [20, 40, 60, 80].forEach((score) => {
+      series.createPriceLine({
+        price: score,
+        color: isDark ? 'rgba(156, 163, 175, 0.2)' : 'rgba(107, 114, 128, 0.2)',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: false,
+        title: '',
+      });
     });
 
     const formattedData = sentimentData.history.map(item => {
@@ -73,29 +91,18 @@ export function SentimentDashboard() {
 
     series.setData(formattedData);
     
-    const markers = sentimentData.history.map(item => {
+    const markers = sentimentData.history.map((item, index) => {
       const year = item.date.substring(0, 4);
       const month = item.date.substring(4, 6);
       const day = item.date.substring(6, 8);
-      
-      let shape: 'circle' | 'square' | 'arrowUp' | 'arrowDown' = 'circle';
-      let position: 'aboveBar' | 'belowBar' | 'inBar' = 'inBar';
-      
-      if (item.score >= 80) {
-        shape = 'arrowDown';
-        position = 'aboveBar';
-      } else if (item.score <= 20) {
-        shape = 'arrowUp';
-        position = 'belowBar';
-      }
-      
+
       return {
         time: `${year}-${month}-${day}`,
-        position: position,
+        position: index % 2 === 0 ? 'aboveBar' : 'belowBar',
         color: item.color,
-        shape: shape,
-        text: item.level,
-        size: 1.5,
+        shape: 'circle',
+        text: String(Math.round(item.smooth_score)),
+        size: 1,
       };
     });
     
@@ -168,17 +175,22 @@ export function SentimentDashboard() {
         </div>
       )}
 
-      <div className="min-w-0 rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">历史情绪趋势 (30天平滑分)</h2>
-        <div className="relative h-[280px] w-full sm:h-[400px]">
-          <div ref={chartContainerRef} className="absolute inset-0" />
+      <div className="min-w-0 rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-5">
+        <div className="mb-3">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">历史情绪趋势</h2>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">近30个交易日 · 平滑分数 0–100</p>
         </div>
-        <div className="mt-4 flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400 justify-center">
-          <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#FF4D4F] mr-2"></span>超强 (80-100)</div>
-          <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#FA8C16] mr-2"></span>升温 (60-79)</div>
-          <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#1890FF] mr-2"></span>震荡/中性 (40-59)</div>
-          <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#52C41A] mr-2"></span>分歧/弱情绪 (20-39)</div>
-          <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#722ED1] mr-2"></span>冰点恐慌 (0-19)</div>
+        <div className="overflow-x-auto">
+          <div className="relative h-[250px] min-w-[900px] w-full sm:h-[320px]">
+            <div ref={chartContainerRef} className="absolute inset-0" />
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-gray-600 dark:text-gray-300">
+          <div className="flex items-center rounded-full border border-gray-100 px-2.5 py-1 dark:border-gray-700"><span className="mr-1.5 h-2 w-2 rounded-full bg-[#FF4D4F]"></span>超强 80–100</div>
+          <div className="flex items-center rounded-full border border-gray-100 px-2.5 py-1 dark:border-gray-700"><span className="mr-1.5 h-2 w-2 rounded-full bg-[#FA8C16]"></span>升温 60–79</div>
+          <div className="flex items-center rounded-full border border-gray-100 px-2.5 py-1 dark:border-gray-700"><span className="mr-1.5 h-2 w-2 rounded-full bg-[#1890FF]"></span>震荡/中性 40–59</div>
+          <div className="flex items-center rounded-full border border-gray-100 px-2.5 py-1 dark:border-gray-700"><span className="mr-1.5 h-2 w-2 rounded-full bg-[#52C41A]"></span>分歧/弱情绪 20–39</div>
+          <div className="flex items-center rounded-full border border-gray-100 px-2.5 py-1 dark:border-gray-700"><span className="mr-1.5 h-2 w-2 rounded-full bg-[#722ED1]"></span>冰点恐慌 0–19</div>
         </div>
       </div>
     </div>
