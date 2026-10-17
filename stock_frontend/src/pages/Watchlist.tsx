@@ -325,8 +325,8 @@ function WatchlistItem({
   
 
   return (
-    <div className="flex flex-wrap items-start gap-y-3 sm:items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-      <div className="mr-3">
+    <div className="flex min-w-0 flex-nowrap items-center gap-1.5 rounded-lg border border-gray-200 p-2 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700 sm:gap-3 sm:p-4">
+      <div className="flex shrink-0 items-center">
         <input
           type="checkbox"
           checked={selected}
@@ -337,47 +337,43 @@ function WatchlistItem({
           className="rounded"
         />
       </div>
-      <Link to={`/stock/${item.code}`} className="min-w-0 flex-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex-1">
-          <div className="font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
-            {item.name || item.code}
+      <Link to={`/stock/${item.code}`} className="flex min-w-0 flex-1 items-center justify-between gap-1.5 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-xs font-semibold text-gray-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400 sm:text-base">
+            {item.name || item.code}<span className="ml-1 font-normal text-gray-500 dark:text-gray-400">({item.code})</span>
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">{item.code}</div>
-
         </div>
 
         {/* 实时行情信息 */}
         {isLoading ? (
-          <div className="text-gray-400 text-sm">加载中...</div>
+          <div className="shrink-0 text-[10px] text-gray-400 sm:text-sm">加载中...</div>
         ) : realtimeData ? (
-          <div className="flex items-center gap-4 text-right">
-            <div>
-              <div className={`text-lg font-bold ${isUp ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+          <div className="flex shrink-0 items-center gap-1.5 text-right sm:gap-4">
+            <div className={`text-sm font-bold sm:text-lg ${isUp ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                 {realtimeData.current_price?.toFixed(2) || '--'}
-              </div>
             </div>
             <div>
-              <div className={`text-sm font-semibold ${isUp ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+              <div className={`whitespace-nowrap text-[10px] font-semibold sm:text-sm ${isUp ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                 {isUp ? '+' : ''}{changePercent.toFixed(2)}%
               </div>
-              <div className={`text-xs ${isUp ? 'text-red-500 dark:text-red-500' : 'text-green-500 dark:text-green-500'}`}>
+              <div className={`whitespace-nowrap text-[9px] sm:text-xs ${isUp ? 'text-red-500 dark:text-red-500' : 'text-green-500 dark:text-green-500'}`}>
                 {isUp ? '+' : ''}{changeValue.toFixed(2)}
               </div>
             </div>
           </div>
         ) : (
-          <div className="text-gray-400 text-sm">--</div>
+          <div className="shrink-0 text-xs text-gray-400 sm:text-sm">--</div>
         )}
       </Link>
 
-      <div className="w-full flex flex-wrap justify-end items-center gap-2 sm:ml-4 sm:w-auto">
-        <AIAnalyzeButton code={item.code} className="text-sm px-3 py-1.5" />
+      <div className="flex shrink-0 items-center gap-1 sm:ml-1 sm:gap-2">
+        <AIAnalyzeButton code={item.code} className="!gap-1 !px-1.5 !py-1 !text-[10px] sm:!gap-2 sm:!px-3 sm:!py-1.5 sm:!text-sm" />
         <button
           onClick={(e) => {
             e.preventDefault();
             onRemove();
           }}
-          className="px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+          className="rounded-lg px-1.5 py-1 text-[10px] text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-900/20 sm:px-4 sm:py-2 sm:text-sm"
         >
           删除
         </button>

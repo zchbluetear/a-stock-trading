@@ -94,7 +94,7 @@
   gap:18px;
   padding:14px 16px;
   background:var(--sr-paper);
-  border:0;
+  border:1px solid var(--sr-border);
   border-radius:8px;
   box-shadow:0 1px 3px rgb(0 0 0 / 0.1),0 1px 2px rgb(0 0 0 / 0.06);
 }
@@ -224,7 +224,7 @@
 
 .sr-panel {
   background:var(--sr-paper);
-  border:0;
+  border:1px solid var(--sr-border);
   border-radius:8px;
   box-shadow:0 1px 3px rgb(0 0 0 / 0.1),0 1px 2px rgb(0 0 0 / 0.06);
   min-width:0;
