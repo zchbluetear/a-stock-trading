@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { stockAPI } from '../services/api';
 import { Link, useNavigate } from 'react-router-dom';
 import { useWatchlistStore } from '../store/watchlistStore';
+import { continuousBadgeClass } from '../utils/continuousBadge';
 
 interface LimitUpStock {
   code: string;
@@ -10,10 +11,23 @@ interface LimitUpStock {
   change_percent: number;
   latest_price: number;
   continuous_days: number;
-  fund: number;
-  first_time: string;
+  first_time: string | number | null;
   industry: string;
 }
+
+const formatFirstTime = (value: string | number | null) => {
+  if (value === null) return '-';
+  const raw = String(value).trim();
+  if (!raw || raw === '-') return '-';
+  if (raw.includes(':')) {
+    const [hour, minute, second = '00'] = raw.split(':');
+    return `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:${second.padStart(2, '0')}`;
+  }
+  const digits = raw.replace(/\.0+$/, '');
+  if (!/^\d{1,6}$/.test(digits)) return raw;
+  const time = digits.padStart(6, '0');
+  return `${time.slice(0, 2)}:${time.slice(2, 4)}:${time.slice(4, 6)}`;
+};
 
 export default function Auction() {
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
@@ -107,12 +121,6 @@ export default function Auction() {
     }
   };
 
-  // 格式化金额 (返回亿元)
-  const formatAmount = (amount: number) => {
-    if (!amount) return '0.00';
-    return (amount / 100000000).toFixed(2);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
@@ -152,15 +160,11 @@ export default function Auction() {
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-10">选择</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">排名</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">代码</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">股票名称</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">最新价</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">今日涨幅</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider font-bold">连板数</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">封板资金(亿)</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">首次封板</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-yellow-600 dark:text-yellow-400 uppercase tracking-wider">所属行业</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">最新价</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">今日涨幅</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">操作</th>
                 </tr>
               </thead>
@@ -175,16 +179,21 @@ export default function Auction() {
                         className="rounded"
                       />
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-cyan-600 dark:text-cyan-400 text-center">
-                      {index + 1}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {stock.code}
-                    </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
-                      {stock.name}
+                      {stock.name}（{stock.code}）
+                      {stock.continuous_days > 0 && (
+                        <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 align-middle text-xs font-bold ${continuousBadgeClass(stock.continuous_days)}`}>
+                          {stock.continuous_days}连板
+                        </span>
+                      )}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400">
+                      {formatFirstTime(stock.first_time)}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-yellow-600 dark:text-yellow-400 font-medium">
+                      {stock.industry || '-'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-red-600 dark:text-red-400">
                       {stock.latest_price ? stock.latest_price.toFixed(2) : '-'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-right">
@@ -194,28 +203,6 @@ export default function Auction() {
                         }`}>
                         {stock.change_percent ? stock.change_percent.toFixed(2) + '%' : '-'}
                       </span>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-right">
-                      <span className={`${stock.continuous_days > 2 ? 'font-bold text-red-600 dark:text-red-400' :
-                        stock.continuous_days > 0 ? 'text-red-600 dark:text-red-400' :
-                          'text-gray-900 dark:text-white'
-                        }`}>
-                        {stock.continuous_days ? stock.continuous_days : '-'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-right">
-                      <span className={`font-medium ${stock.fund > 0 ? 'text-red-600 dark:text-red-400' :
-                        stock.fund < 0 ? 'text-green-600 dark:text-green-400' :
-                          'text-gray-900 dark:text-white'
-                        }`}>
-                        {formatAmount(stock.fund)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400">
-                      {stock.first_time || '-'}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-yellow-600 dark:text-yellow-400 font-medium">
-                      {stock.industry || '-'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">

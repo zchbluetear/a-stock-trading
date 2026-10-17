@@ -12,7 +12,8 @@ import requests
 from flask import jsonify
 
 TZ = ZoneInfo('Asia/Shanghai')
-INTERVAL = 5
+INTERVAL = 60
+IDLE_TIMEOUT = INTERVAL + 15
 PAGE_SIZE = 100
 WORKERS = 8
 
@@ -174,7 +175,7 @@ class MarketScanner:
             started = time.monotonic()
             with self.lock:
                 # Stop upstream traffic after all viewers pause/leave.
-                if started - self.last_access > 20:
+                if started - self.last_access > IDLE_TIMEOUT:
                     self.worker = None
                     return
                 self.refreshing = True
@@ -201,7 +202,7 @@ class MarketScanner:
                 self.worker = threading.Thread(target=self.run, daemon=True, name='market-movers')
                 self.worker.start()
             snapshot = self.snapshot
-            stale = not snapshot or (datetime.now(TZ) - datetime.fromisoformat(snapshot['fetched_at'])).total_seconds() > 15
+            stale = not snapshot or (datetime.now(TZ) - datetime.fromisoformat(snapshot['fetched_at'])).total_seconds() > INTERVAL * 1.5
             return {'snapshot': snapshot, 'refreshing': self.refreshing or snapshot is None,
                     'error': self.error, 'stale': stale, 'interval_seconds': INTERVAL,
                     'last_attempt': self.last_attempt, 'scan_seconds': self.duration}

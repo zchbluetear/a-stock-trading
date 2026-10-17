@@ -37,9 +37,27 @@ def get_auction_sector_data():
         df['最新价'] = pd.to_numeric(df['最新价'], errors='coerce')
         df['连板数'] = pd.to_numeric(df['连板数'], errors='coerce')
         df['封板资金'] = pd.to_numeric(df['封板资金'], errors='coerce')
-        
-        # 排序逻辑：按连板数和封板资金降序
-        df = df.sort_values(by=['连板数', '封板资金'], ascending=[False, False]).reset_index(drop=True)
+
+        def first_time_sort_key(value):
+            if pd.isna(value):
+                return 24 * 60 * 60
+            raw = str(value).strip()
+            try:
+                if ':' in raw:
+                    parts = [int(part) for part in raw.split(':')]
+                    hour, minute = parts[:2]
+                    second = parts[2] if len(parts) > 2 else 0
+                else:
+                    digits = str(int(float(raw))).zfill(6)
+                    hour, minute, second = int(digits[:2]), int(digits[2:4]), int(digits[4:6])
+                return hour * 3600 + minute * 60 + second
+            except (TypeError, ValueError, OverflowError):
+                return 24 * 60 * 60
+
+        # 连板数高的优先；同板数按首次封板时间从早到晚，缺失时间排最后。
+        df['_first_time_sort'] = df['首次封板时间'].map(first_time_sort_key)
+        df = df.sort_values(by=['连板数', '_first_time_sort'], ascending=[False, True]).reset_index(drop=True)
+        df = df.drop(columns=['_first_time_sort'])
         
         # 重命名列为英文键，方便 API 和前端使用
         df = df.rename(columns={
@@ -52,7 +70,7 @@ def get_auction_sector_data():
             '首次封板时间': 'first_time',
             '所属行业': 'industry'
         })
-        return df.head(50).to_dict('records')
+        return df.to_dict('records')
     except Exception as e:
         print(f"Error in get_auction_sector_data: {e}")
         # 打印错误到后台日志，不打断界面显示

@@ -4,14 +4,11 @@ import { getSectorResearch } from '../services/sectorResearch';
 import type { SectorRow, SectorSource } from '../services/sectorResearch';
 import './SectorResearch.css';
 
-type Filter = 'today' | 'persistent' | 'new' | 'all';
+type Filter = 'today' | 'persistent' | 'all';
 type Sort = 'rank' | 'appearances' | 'change';
 const filters: { value: Filter; label: string }[] = [
-  { value: 'today', label: '当日上榜' }, { value: 'persistent', label: '持续活跃' },
-  { value: 'new', label: '新进榜单' }, { value: 'all', label: '窗口全部' },
+  { value: 'persistent', label: '持续活跃' }, { value: 'today', label: '当日上榜' },
 ];
-const formatValue = (value: number | null, source: SectorSource) => value === null ? '—'
-  : source === 'ths' ? `${value > 0 ? '+' : ''}${value.toFixed(2)}%` : value.toLocaleString('zh-CN');
 function RankChange({ row }: { row: SectorRow }) {
   if (row.is_new) return <span className="sr-tag sr-tag-new">新进</span>;
   if (row.rank_change === null) return <span className="sr-muted">—</span>;
@@ -25,15 +22,6 @@ function MiniHistory({ row }: { row: SectorRow }) {
       style={{ height: p.rank ? `${8 + (11 - p.rank) * 2}px` : '4px', opacity: p.rank ? 0.35 + (11 - p.rank) * 0.065 : 1 }} />)}
   </div>;
 }
-function exportRows(rows: SectorRow[], source: SectorSource, date: string) {
-  const cells = (s: string | number | null) => `"${String(s ?? '').replace(/^[=+@-]/, "'$&").replace(/"/g, '""')}"`;
-  const table = [['快照日期', '来源', '板块', '代码', '排名', source === 'ths' ? '涨幅(%)' : '强度分', '窗口上榜次数', '连续快照上榜次数'],
-    ...rows.map(r => [date, source, r.name, r.code, r.rank, r.value, r.appearances, r.streak])];
-  const url = URL.createObjectURL(new Blob(['\uFEFF' + table.map(r => r.map(cells).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8;' }));
-  const a = document.createElement('a'); a.href = url; a.download = `板块研究-${source}-${date}.csv`; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 export default function SectorResearch() {
   const [source, setSource] = useState<SectorSource>('kaipan');
   const [window, setWindow] = useState(10);
@@ -41,7 +29,7 @@ export default function SectorResearch() {
   const [filter, setFilter] = useState<Filter>('today');
   const [sort, setSort] = useState<Sort>('rank');
   const [search, setSearch] = useState('');
-  const { data, error, isPending, isFetching, refetch } = useQuery({
+  const { data, error, isPending, refetch } = useQuery({
     queryKey: ['sector-research', source, window, date],
     queryFn: ({ signal }) => getSectorResearch(source, window, date, signal),
     staleTime: 180000, refetchInterval: 300000, retry: 1,
@@ -51,7 +39,6 @@ export default function SectorResearch() {
       if (search && !`${r.name}${r.code}`.toLowerCase().includes(search.toLowerCase().trim())) return false;
       if (filter === 'today') return r.rank !== null;
       if (filter === 'persistent') return r.streak >= 3;
-      if (filter === 'new') return r.is_new;
       return true;
     });
     return result.sort((a, b) => sort === 'appearances' ? b.appearances - a.appearances || (a.rank ?? 99) - (b.rank ?? 99)
@@ -62,21 +49,13 @@ export default function SectorResearch() {
   const activeDateIndex = data?.dates.indexOf(data.date) ?? -1;
   const switchSource = (next: SectorSource) => { setSource(next); setDate(''); };
   return <div className="sector-research">
-    <header className="sr-heading">
-      <div>
-
-        </div>
-      <div className="sr-heading-actions"><a href="/auction" className="sr-link">涨停股监控 ↗</a>
-        <button className="sr-button sr-primary" disabled={isFetching} onClick={() => refetch()}><span className={isFetching ? 'sr-spin' : ''}>↻</span> {isFetching ? '更新中' : '刷新数据'}</button></div>
-    </header>
-
     <section className="sr-toolbar" aria-label="研究条件">
       <div className="sr-source" role="group" aria-label="数据来源">
         <button aria-pressed={source === 'kaipan'} className={source === 'kaipan' ? 'active' : ''} onClick={() => switchSource('kaipan')}>开盘啦 <small>强度</small></button>
         <button aria-pressed={source === 'ths'} className={source === 'ths' ? 'active' : ''} onClick={() => switchSource('ths')}>同花顺 <small>涨幅</small></button>
       </div>
       <div className="sr-controls">
-        <label>观察窗口<select value={window} onChange={e => setWindow(Number(e.target.value))}>{[5, 10, 20].map(n => <option key={n} value={n}>近 {n} 个快照</option>)}</select></label>
+        <label>时间范围<select value={window} onChange={e => setWindow(Number(e.target.value))}>{[5, 10, 20].map(n => <option key={n} value={n}>近 {n} 天</option>)}</select></label>
         <div className="sr-date-control"><button aria-label="上一快照" disabled={!data || activeDateIndex >= data.dates.length - 1} onClick={() => data && setDate(data.dates[activeDateIndex + 1])}>‹</button>
           <label className="sr-date-label"><span className="sr-sr-only">复盘日期</span><select value={data?.date || ''} disabled={!data} onChange={e => setDate(e.target.value)}>{data ? data.dates.map(d => <option key={d} value={d}>{d}</option>) : <option value="">加载日期…</option>}</select></label>
           <button aria-label="下一快照" disabled={!data || activeDateIndex <= 0} onClick={() => data && setDate(data.dates[activeDateIndex - 1])}>›</button></div>
@@ -87,34 +66,32 @@ export default function SectorResearch() {
     {error && <div className="sr-notice sr-error" role="alert"><strong>数据更新失败</strong><span>{error.message}{data ? '；下方保留上次成功结果，请注意抓取时间。' : ''}</span><button onClick={() => refetch()}>重试 ↻</button></div>}
     {isPending && <div className="sr-loading" role="status"><span className="sr-spin">◌</span> 正在读取板块排名与历史快照…</div>}
     {data && <>
-      <div className="sr-meta"><span><i /> {data.source_name} · 快照 {data.date}</span><span>抓取于 {new Date(data.fetched_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })}（北京时间）</span></div>
-      {(!data.latest_is_today || !data.complete || data.complete_count < data.sample_count) && <div className="sr-notice" role="status">
-        <span>ⓘ</span><span>{!data.latest_is_today && `数据源最新快照为 ${data.latest_date}，不代表今日实时行情。`}{(!data.complete || data.complete_count < data.sample_count) && ' 部分快照不完整，持续性只统计完整快照。'}</span>
+      <div className="sr-meta"><span>抓取于 {new Date(data.fetched_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })}（北京时间）</span></div>
+      {(!data.complete || data.complete_count < data.sample_count) && <div className="sr-notice" role="status">
+        <span>ⓘ</span><span>部分快照不完整，持续性只统计完整快照。</span>
       </div>}
 
       <div className="sr-workspace">
         <section className="sr-panel sr-ranking">
-          <div className="sr-section-title"><div><h2>谁在走强</h2></div><button className="sr-export" disabled={!rows.length} onClick={() => exportRows(rows, source, data.date)}>导出 CSV ↓</button></div>
+          <div className="sr-section-title"><div><h2>板块趋势</h2></div></div>
           <div className="sr-tabs" role="group" aria-label="榜单筛选">{filters.map(f => <button key={f.value} aria-pressed={filter === f.value} className={filter === f.value ? 'active' : ''} onClick={() => setFilter(f.value)}>{f.label}</button>)}</div>
           <div className="sr-table-tools"><label className="sr-search"><span>⌕</span><input aria-label="搜索板块" placeholder="搜索板块名称或代码" value={search} onChange={e => setSearch(e.target.value)} /></label>
             <label><span className="sr-sr-only">排序方式</span><select value={sort} onChange={e => setSort(e.target.value as Sort)}><option value="rank">按当日排名</option><option value="appearances">按上榜次数</option><option value="change">按排名提升</option></select></label></div>
           <p className="sr-scroll-hint">左右滑动表格，查看完整排名和近期轨迹</p>
-          <div className="sr-table-scroll" tabIndex={0} role="region" aria-label="板块排名表"><table className="sr-table"><thead><tr><th>排名 / 板块</th><th>{source === 'ths' ? '当日涨幅' : '强度分'}</th><th>排名变化</th><th>上榜次数</th><th>近期轨迹</th></tr></thead><tbody>
+          <div className="sr-table-scroll" tabIndex={0} role="region" aria-label="板块排名表"><table className="sr-table"><thead><tr><th>排名 / 板块</th><th>排名变化 <span>（对比上一日）</span></th><th>上榜次数</th><th>近期轨迹</th></tr></thead><tbody>
             {rows.map(r => <tr key={r.code}>
               <td><div className="sr-row-select"><span className={`sr-rank ${r.rank && r.rank <= 3 ? 'sr-rank-top' : ''}`}>{r.rank ?? '—'}</span><span><strong>{r.name}</strong><small>{r.code}{r.streak >= 3 ? ` · 连续 ${r.streak} 次` : ''}</small></span></div></td>
-              <td className={source === 'ths' && (r.value ?? 0) < 0 ? 'sr-down sr-value' : 'sr-value'}>{formatValue(r.value, source)}</td><td><RankChange row={r} /></td><td><strong>{r.appearances}</strong><span className="sr-muted"> / {data.complete_count}</span></td><td><MiniHistory row={r} /></td>
+              <td><RankChange row={r} /></td><td><strong>{r.appearances}</strong><span className="sr-muted"> / {data.complete_count}</span></td><td><MiniHistory row={r} /></td>
             </tr>)}
           </tbody></table></div>
           {!rows.length && <div className="sr-empty"><strong>没有符合条件的板块</strong><p>尝试其他筛选条件或清空搜索。</p><button onClick={() => { setSearch(''); setFilter('today'); }}>重置筛选</button></div>}
-          <div className="sr-table-foot">{rows.length} 个板块 · 排名变化对比 {data.previous_date || '无前序快照'}</div>
         </section>
 
       </div>
 
-      <section className="sr-panel sr-rotation"><div className="sr-section-title"><div><h2>热点轮动，一眼看清</h2><p>按窗口上榜次数展示前 12 个板块 · 左旧右新 · 点击日期切换复盘</p></div><div className="sr-legend"><span>排名</span><i className="sr-heat-strong" />1–3<i className="sr-heat-mid" />4–6<i className="sr-heat-light" />7–10<span>— 未上榜</span></div></div>
+      <section className="sr-panel sr-rotation"><div className="sr-section-title"><div><h2>板块轮动</h2></div><div className="sr-legend"><span>排名</span><i className="sr-heat-strong" />1–3<i className="sr-heat-mid" />4–6<i className="sr-heat-light" />7–10<span>— 未上榜</span></div></div>
         <div className="sr-heat-scroll" tabIndex={0} role="region" aria-label="板块轮动矩阵"><table className="sr-heat-table"><thead><tr><th>板块 / 上榜次数</th>{heatRows[0]?.history.map(p => <th key={p.date}><button title={`复盘 ${p.date}`} onClick={() => setDate(p.date)}>{p.date.slice(5)}</button></th>)}</tr></thead><tbody>{heatRows.map(r => <tr key={r.code}><th><button onClick={() => { setFilter('all'); setSearch(r.code); }} title="在上方榜单筛选此板块">{r.name}<span>{r.appearances} 次</span></button></th>{r.history.map(p => <td key={p.date}><span title={`${r.name} · ${p.date} · ${p.rank ? `第${p.rank}名` : p.complete ? '未上榜' : '数据不全'}`} className={!p.complete ? 'sr-heat-unknown' : p.rank === null ? 'sr-heat-empty' : p.rank <= 3 ? 'sr-heat-strong' : p.rank <= 6 ? 'sr-heat-mid' : 'sr-heat-light'}>{p.rank ?? (p.complete ? '—' : '?')}</span></td>)}</tr>)}</tbody></table></div>
       </section>
     </>}
-    <footer className="sr-footer"><span>静水流深 / 板块研究</span><span>用连续的观察，理解每天的变化。</span></footer>
   </div>;
 }

@@ -3,14 +3,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Home from './pages/Home';
 import Watchlist from './pages/Watchlist';
 import StockDetail from './pages/StockDetail';
-import Tasks from './pages/Tasks';
+import AICenter from './pages/AICenter';
 import Sentiment from './pages/Sentiment';
 import SectorResearch from './pages/SectorResearch';
 import MarketMovers from './pages/MarketMovers';
-import Strategy from './pages/Strategy';
-import StrategyConfig from './pages/StrategyConfig';
-import StrategyToggle from './pages/StrategyToggle';
-import Settings from './pages/Settings';
+import StrategyCenter from './pages/StrategyCenter';
 import AIDebate from './pages/AIDebate';
 import Auction from './pages/Auction';
 import Layout from './components/Layout';
@@ -35,16 +32,16 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/watchlist" element={<Watchlist />} />
             <Route path="/stock/:code" element={<StockDetail />} />
-            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/tasks" element={<AICenter />} />
+            <Route path="/settings" element={<AICenter />} />
             <Route path="/sentiment" element={<Sentiment />} />
             <Route path="/sectors" element={<SectorResearch />} />
             <Route path="/market-movers" element={<MarketMovers />} />
-            <Route path="/strategy" element={<Strategy />} />
-            <Route path="/strategy-config" element={<StrategyConfig />} />
-            <Route path="/strategy-toggle" element={<StrategyToggle />} />
+            <Route path="/strategy" element={<StrategyCenter />} />
+            <Route path="/strategy-config" element={<StrategyCenter />} />
+            <Route path="/strategy-toggle" element={<StrategyCenter />} />
             <Route path="/auction" element={<Auction />} />
             <Route path="/ai-debate" element={<AIDebate />} />
-            <Route path="/settings" element={<Settings />} />
           </Routes>
         </Layout>
       </BrowserRouter>

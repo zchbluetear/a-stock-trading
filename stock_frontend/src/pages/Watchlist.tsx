@@ -89,37 +89,6 @@ export default function Watchlist() {
     setShowMultiModal(true);
   };
 
-  const [refreshingVol, setRefreshingVol] = useState(false);
-  const handleRefreshVolumePrediction = async () => {
-    if (refreshingVol) return;
-    setRefreshingVol(true);
-    try {
-      await stockAPI.refreshVolumePrediction();
-      // 重新拉取自选股列表（会带最新的 volume_prediction）
-      await fetchWatchlist();
-    } catch (e) {
-      console.error('刷新成交量预测失败:', e);
-      alert('刷新成交量预测失败：' + ((e as Error).message || '未知错误'));
-    } finally {
-      setRefreshingVol(false);
-    }
-  };
-
-  const [refreshingSingle, setRefreshingSingle] = useState<string | null>(null);
-  const handleRefreshSingleVolumePrediction = async (code: string) => {
-    if (refreshingSingle) return;
-    setRefreshingSingle(code);
-    try {
-      await stockAPI.refreshSingleVolumePrediction(code);
-      await fetchWatchlist();
-    } catch (e) {
-      console.error(`单只刷新成交量预测失败 ${code}:`, e);
-      alert('刷新失败：' + ((e as Error).message || '未知错误'));
-    } finally {
-      setRefreshingSingle(null);
-    }
-  };
-
   const handleStartMulti = async () => {
     if (selectedCodes.length < 2) {
       setMultiError('请至少勾选2只股票');
@@ -158,13 +127,6 @@ export default function Watchlist() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">自选股管理</h1>
         <div className="flex items-center gap-3 flex-wrap">
-          <button
-            onClick={handleRefreshVolumePrediction}
-            disabled={refreshingVol}
-            className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-          >
-            {refreshingVol ? '计算中...' : '全部刷新成交量预测'}
-          </button>
           {selectedCodes.length >= 2 && (
             <button
               onClick={handleOpenMulti}
@@ -215,8 +177,6 @@ export default function Watchlist() {
                   onRemove={() => removeStock(item.code)}
                   selected={selectedCodes.includes(item.code)}
                   onToggleSelect={() => toggleSelectCode(item.code)}
-                  onRefreshSingle={handleRefreshSingleVolumePrediction}
-                  refreshingSingle={refreshingSingle}
                 />
               ))}
             </div>
@@ -346,15 +306,11 @@ function WatchlistItem({
   onRemove,
   selected,
   onToggleSelect,
-  onRefreshSingle,
-  refreshingSingle,
 }: {
   item: any;
   onRemove: () => void;
   selected: boolean;
   onToggleSelect: () => void;
-  onRefreshSingle: (code: string) => Promise<void>;
-  refreshingSingle: string | null;
 }) {
   // 获取实时行情数据
   const { data: realtimeData, isLoading } = useQuery({
@@ -370,27 +326,6 @@ function WatchlistItem({
     : 0;
   const isUp = changePercent >= 0;
   
-  const volumePrediction = item.volume_prediction as {
-    predicted_vol?: number;
-    today_actual_vol?: number;
-    avg_5d_vol?: number;
-    change_pct?: number;
-    vol_15min?: number;
-  } | null | undefined;
-  
-  /**
-   * 新浪返回的成交量单位是「股」。
-   * A 股常用单位是「手」，1 手 = 100 股；1 万手 = 1,000,000 股；1 亿手 = 100,000,000 股。
-   */
-  const formatVolume = (v?: number) => {
-    if (v == null || isNaN(v) || v <= 0) return '--';
-    // 1手 = 100股
-    const hands = v / 100;
-    if (hands >= 100000000) return `${(hands / 100000000).toFixed(2)}亿手`; // 1亿手+
-    if (hands >= 10000) return `${(hands / 10000).toFixed(2)}万手`;         // 1万手+
-    if (hands >= 1) return `${hands.toFixed(0)}手`;                           // 1手+
-    return `${hands.toFixed(2)}手`;
-  };
 
   return (
     <div className="flex flex-wrap items-start gap-y-3 sm:items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
@@ -411,36 +346,7 @@ function WatchlistItem({
             {item.name || item.code}
           </div>
           <div className="text-sm text-gray-500 dark:text-gray-400">{item.code}</div>
-          {/* 成交量预测：在"自选"列（名称列）下方显示 */}
-          {volumePrediction && ((volumePrediction.predicted_vol ?? 0) > 0 || (volumePrediction.today_actual_vol ?? 0) > 0) ? (
-            <div className="mt-1 text-xs flex items-center gap-2 flex-wrap">
-              {(volumePrediction.today_actual_vol ?? 0) > 0 ? (
-                <>
-                  <span className="text-gray-600 dark:text-gray-300 font-medium">
-                    今日实量:{formatVolume(volumePrediction.today_actual_vol)}
-                  </span>
-                  <span className="text-gray-400 dark:text-gray-500 font-medium">|</span>
-                </>
-              ) : null}
-              <span className="text-gray-600 dark:text-gray-300 font-medium">
-                预测量:{formatVolume(volumePrediction.predicted_vol)}
-              </span>
-              <span className="text-gray-400 dark:text-gray-500 font-medium">/</span>
-              <span className="text-gray-600 dark:text-gray-300 font-medium">
-                5日均:{formatVolume(volumePrediction.avg_5d_vol)}
-              </span>
-              <span
-                className={`font-semibold px-1.5 py-0.5 rounded ${
-                  (volumePrediction.change_pct ?? 0) >= 0
-                    ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20'
-                    : 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
-                }`}
-              >
-                {(volumePrediction.change_pct ?? 0) >= 0 ? '+' : ''}
-                {(volumePrediction.change_pct ?? 0).toFixed(1)}%
-              </span>
-            </div>
-          ) : null}
+
         </div>
 
         {/* 实时行情信息 */}
@@ -468,26 +374,6 @@ function WatchlistItem({
       </Link>
 
       <div className="w-full flex flex-wrap justify-end items-center gap-2 sm:ml-4 sm:w-auto">
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            onRefreshSingle(item.code);
-          }}
-          disabled={refreshingSingle === item.code}
-          title="刷新这只股票的成交量预测"
-          className="px-2.5 py-1.5 text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {refreshingSingle === item.code ? (
-            <span className="text-xs font-medium">计算中…</span>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-              <path d="M3 12a9 9 0 0 1 15.5-6.4L21 8"/>
-              <path d="M21 3v5h-5"/>
-              <path d="M21 12a9 9 0 0 1-15.5 6.4L3 16"/>
-              <path d="M3 21v-5h5"/>
-            </svg>
-          )}
-        </button>
         <AIAnalyzeButton code={item.code} className="text-sm px-3 py-1.5" />
         <button
           onClick={(e) => {

@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { stockAPI } from '../services/api';
 import { useWatchlistStore } from '../store/watchlistStore';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import AIAnalyzeButton from '../components/AIAnalyzeButton';
+import { SentimentDashboard } from './Sentiment';
 
 // 判断是否在交易时间
 function isTradingTime(): boolean {
@@ -29,64 +30,32 @@ function getRefetchInterval(): number {
 
 export default function Home() {
   const { items, fetchWatchlist } = useWatchlistStore();
-  const [debateFilter, setDebateFilter] = useState<'active' | 'completed'>('active');
-  const location = useLocation();
 
   useEffect(() => {
     fetchWatchlist();
   }, [fetchWatchlist]);
 
-  const { data: debateJobs = [], isLoading: debateLoading, refetch: refetchDebates } = useQuery({
-    queryKey: ['debate-jobs', debateFilter],
-    queryFn: () => stockAPI.listDebateJobs(debateFilter, 20),
-    refetchInterval: 5000,
-  });
-
-  useEffect(() => {
-    refetchDebates();
-  }, [location.pathname, debateFilter, refetchDebates]);
-
-  const handleStopDebate = async (jobId: string) => {
-    await stockAPI.stopDebateJob(jobId);
-    refetchDebates();
-  };
-
-  const handleDeleteDebate = async (jobId: string) => {
-    await stockAPI.deleteDebateJob(jobId);
-    refetchDebates();
-  };
-
-  // 获取三大指数数据
   const fetchIndexData = async (code: string) => {
     const apiUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5001`;
     const res = await fetch(`${apiUrl}/api/sina/realtime/${code}`);
-    if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const data = await res.json();
-    if (data.error) {
-      throw new Error(data.message || data.error);
-    }
+    if (data.error) throw new Error(data.message || data.error);
     return data;
   };
 
-  // 上证指数
   const { data: shIndex, isLoading: shLoading } = useQuery({
     queryKey: ['realtime', 'sh000001'],
     queryFn: () => fetchIndexData('sh000001'),
     refetchInterval: getRefetchInterval(),
     retry: 2,
   });
-
-  // 深证成指
   const { data: szIndex, isLoading: szLoading } = useQuery({
     queryKey: ['realtime', 'sz399001'],
     queryFn: () => fetchIndexData('sz399001'),
     refetchInterval: getRefetchInterval(),
     retry: 2,
   });
-
-  // 创业板指
   const { data: cybIndex, isLoading: cybLoading } = useQuery({
     queryKey: ['realtime', 'sz399006'],
     queryFn: () => fetchIndexData('sz399006'),
@@ -95,55 +64,40 @@ export default function Home() {
   });
 
   return (
-    <div className="space-y-6">
-      {/* 三大指数卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* 上证指数 */}
-        <IndexCard
-          title="上证指数"
-          data={shIndex}
-          isLoading={shLoading}
-          gradientFrom="from-blue-600"
-          gradientTo="to-blue-800"
-        />
-        
-        {/* 深证成指 */}
-        <IndexCard
-          title="深证成指"
-          data={szIndex}
-          isLoading={szLoading}
-          gradientFrom="from-indigo-600"
-          gradientTo="to-indigo-800"
-        />
-        
-        {/* 创业板指 */}
-        <IndexCard
-          title="创业板指"
-          data={cybIndex}
-          isLoading={cybLoading}
-          gradientFrom="from-purple-600"
-          gradientTo="to-purple-800"
-        />
-      </div>
+    <div className="space-y-4">
+      <section className="space-y-2" aria-label="市场指数">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">市场指数</h2>
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-5">
+          <div className="grid grid-cols-1 divide-y divide-gray-200 dark:divide-gray-700 sm:grid-cols-3 sm:divide-y-0 sm:divide-x">
+            <IndexCard title="上证指数" data={shIndex} isLoading={shLoading} />
+            <IndexCard title="深证成指" data={szIndex} isLoading={szLoading} />
+            <IndexCard title="创业板指" data={cybIndex} isLoading={cybLoading} />
+          </div>
+        </div>
+      </section>
+
+      <SentimentDashboard />
 
       {/* 自选股列表 */}
-      <div>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">自选股</h2>
+      <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            自选股 <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">{items.length}</span>
+          </h2>
           <Link
             to="/watchlist"
-            className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+            className="rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 dark:border-gray-600 dark:text-blue-400 dark:hover:bg-gray-700"
           >
             管理自选
           </Link>
         </div>
 
         {items.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow">
+          <div className="rounded-lg border border-dashed border-gray-300 py-8 text-center dark:border-gray-600">
             <p className="text-gray-500 dark:text-gray-400">暂无自选股</p>
             <Link
               to="/watchlist"
-              className="mt-4 inline-block text-blue-600 hover:text-blue-800 dark:text-blue-400"
+              className="mt-3 inline-flex rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
               添加自选股
             </Link>
@@ -155,163 +109,37 @@ export default function Home() {
             ))}
           </div>
         )}
-      </div>
+      </section>
 
-      {/* 辩论记录 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-          <div className="flex flex-wrap gap-3 items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">辩论记录</h2>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setDebateFilter('active')}
-                className={`px-3 py-1 rounded ${
-                  debateFilter === 'active'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
-              >
-                进行中
-              </button>
-              <button
-                onClick={() => setDebateFilter('completed')}
-                className={`px-3 py-1 rounded ${
-                  debateFilter === 'completed'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
-              >
-                已完成
-              </button>
-            </div>
-          </div>
-          {debateLoading ? (
-            <div className="text-gray-500">加载中...</div>
-          ) : debateJobs.length === 0 ? (
-            <div className="text-gray-500">暂无任务</div>
-          ) : (
-            <div className="space-y-2">
-              {debateJobs.map((job) => (
-                <Link
-                  key={job.job_id}
-                  to={`/ai-debate?code=${job.code}&job_id=${job.job_id}`}
-                  className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-white">{job.name}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{job.updated_at}</div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`text-xs px-2 py-1 rounded ${
-                        job.status === 'completed'
-                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                          : job.status === 'failed'
-                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                          : job.status === 'canceled'
-                          ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                          : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
-                      }`}
-                    >
-                      {job.status === 'completed'
-                        ? '已完成'
-                        : job.status === 'failed'
-                        ? '失败'
-                        : job.status === 'canceled'
-                        ? '已终止'
-                        : '进行中'}
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleStopDebate(job.job_id);
-                      }}
-                      disabled={job.status !== 'queued' && job.status !== 'running'}
-                      className="text-xs px-2 py-1 bg-yellow-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      终止
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleDeleteDebate(job.job_id);
-                      }}
-                      disabled={job.status === 'queued' || job.status === 'running'}
-                      className="text-xs px-2 py-1 bg-red-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      删除
-                    </button>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
     </div>
   );
 }
 
-// 指数卡片组件
-function IndexCard({ 
-  title, 
-  data, 
-  isLoading, 
-  gradientFrom, 
-  gradientTo 
-}: { 
-  title: string; 
-  data: any; 
-  isLoading: boolean;
-  gradientFrom: string;
-  gradientTo: string;
-}) {
-  const changePercent = data?.change_percent ?? 0;
-  const changeValue = data?.current_price && data?.yesterday_close 
-    ? data.current_price - data.yesterday_close 
+function IndexCard({ title, data, isLoading }: { title: string; data: any; isLoading: boolean }) {
+  const changePercent = Number(data?.change_percent ?? 0);
+  const changeValue = data?.current_price != null && data?.yesterday_close != null
+    ? Number(data.current_price) - Number(data.yesterday_close)
     : 0;
   const isUp = changePercent >= 0;
+  const movementColor = isUp ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400';
 
   return (
-    <div className={`bg-gradient-to-r ${gradientFrom} ${gradientTo} rounded-xl shadow-lg p-4 sm:p-6 text-white transition-transform hover:scale-105`}>
-      <h3 className="text-lg font-semibold mb-4 opacity-90">{title}</h3>
+    <div className="px-3 py-3 sm:px-5">
+      <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</div>
       {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-        </div>
-      ) : data && data.current_price != null ? (
-        <div>
-          {/* 指数值 - 根据涨跌显示红绿 */}
-          <div className={`text-4xl font-bold mb-2 ${isUp ? 'text-red-300' : 'text-green-300'}`}>
+        <div className="mt-3 h-8 animate-pulse rounded bg-gray-100 dark:bg-gray-700" />
+      ) : data?.current_price != null ? (
+        <div className="mt-2 flex items-baseline justify-between gap-2">
+          <div className="text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">
             {Number(data.current_price).toFixed(2)}
           </div>
-          <div className="flex items-baseline gap-3 mb-3">
-            {/* 涨跌幅 - 根据涨跌显示红绿 */}
-            <div className={`text-2xl font-bold ${isUp ? 'text-red-200' : 'text-green-200'}`}>
-              {isUp ? '+' : ''}{changePercent.toFixed(2)}%
-            </div>
-            {/* 涨跌值 - 根据涨跌显示红绿 */}
-            <div className={`text-lg font-semibold ${isUp ? 'text-red-200' : 'text-green-200'}`}>
-              {isUp ? '+' : ''}{changeValue.toFixed(2)}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs opacity-80 mt-4 pt-4 border-t border-white/20">
-            <div>
-              <div className="opacity-70">最高</div>
-              <div className="font-semibold">{data.high?.toFixed(2) || '--'}</div>
-            </div>
-            <div>
-              <div className="opacity-70">最低</div>
-              <div className="font-semibold">{data.low?.toFixed(2) || '--'}</div>
-            </div>
-            <div className="col-span-2">
-              <div className="opacity-70">成交量</div>
-              <div className="font-semibold">
-                {data.volume ? (data.volume / 10000).toFixed(0) + '万手' : '--'}
-              </div>
-            </div>
+          <div className={`text-right text-sm font-semibold tabular-nums ${movementColor}`}>
+            <div>{isUp ? '+' : ''}{changePercent.toFixed(2)}%</div>
+            <div className="text-xs font-medium opacity-80">{isUp ? '+' : ''}{changeValue.toFixed(2)} 点</div>
           </div>
         </div>
       ) : (
-        <div className="text-red-200 text-sm">数据加载失败</div>
+        <div className="mt-3 text-sm text-gray-400">指数行情暂不可用</div>
       )}
     </div>
   );
@@ -361,4 +189,3 @@ function StockCard({ code, name }: { code: string; name?: string }) {
     </div>
   );
 }
-

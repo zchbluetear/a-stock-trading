@@ -317,6 +317,7 @@
 
 .sr-table {
   width:100%;
+  table-layout:fixed;
   white-space:nowrap;
   border-collapse:collapse;
   font-size:12px;
@@ -334,6 +335,25 @@
 .sr-table th:first-child {
   text-align:left;
   padding-left:22px;
+  width:30%;
+}
+
+.sr-table th:nth-child(2),
+.sr-table td:nth-child(2) {
+  width:18%;
+  text-align:left;
+  padding-left:18px;
+}
+
+.sr-table th:nth-child(3),
+.sr-table td:nth-child(3) {
+  width:22%;
+  text-align:center;
+}
+
+.sr-table th:nth-child(4),
+.sr-table td:nth-child(4) {
+  width:30%;
 }
 
 .sr-table th:last-child {

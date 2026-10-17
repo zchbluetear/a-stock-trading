@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Navigate } from 'react-router-dom';
 import { stockAPI } from '../services/api';
 import { createChart, ColorType, CrosshairMode } from 'lightweight-charts';
 import LoadingSpinner from '../components/LoadingSpinner';
 
-export default function Sentiment() {
+export function SentimentDashboard() {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   
   const { data: sentimentData, isLoading, error } = useQuery({
@@ -22,7 +23,7 @@ export default function Sentiment() {
         textColor: '#9ca3af',
       },
       width: chartContainerRef.current.clientWidth,
-      height: 400,
+      height: chartContainerRef.current.clientHeight,
       crosshair: {
         mode: CrosshairMode.Normal,
       },
@@ -102,16 +103,14 @@ export default function Sentiment() {
 
     chart.timeScale().fitContent();
 
-    const handleResize = () => {
-      if (chartContainerRef.current) {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
+    const container = chartContainerRef.current;
+    const resizeObserver = new ResizeObserver(() => {
+      chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+    });
+    resizeObserver.observe(container);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
       chart.remove();
     };
   }, [sentimentData]);
@@ -141,62 +140,37 @@ export default function Sentiment() {
   const { summary } = sentimentData || {};
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-4 sm:space-y-6">
       <div className="flex flex-wrap gap-3 items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">市场情绪</h1>
-        {summary && (
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400">最新状态:</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">市场情绪</h1>
+          {summary && (
             <span 
               className="px-3 py-1 rounded-full text-sm font-semibold text-white shadow-sm"
               style={{ backgroundColor: summary.level_color }}
             >
               {summary.level} ({summary.sentiment_smooth})
             </span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-center items-center text-center">
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">今日涨停</div>
+        <div className="grid grid-cols-2 divide-x divide-gray-200 rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800 sm:p-5">
+          <div className="flex flex-col items-center justify-center py-2 text-center">
+            <div className="mb-1 text-xs text-gray-500 dark:text-gray-400">今日涨停</div>
             <div className="text-xl font-bold text-red-600 dark:text-red-400">{summary.metrics.limit_up_count}家</div>
           </div>
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-center items-center text-center">
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">今日跌停</div>
+          <div className="flex flex-col items-center justify-center py-2 text-center">
+            <div className="mb-1 text-xs text-gray-500 dark:text-gray-400">今日跌停</div>
             <div className="text-xl font-bold text-green-600 dark:text-green-400">{summary.metrics.limit_down_count}家</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-center items-center text-center">
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">净涨停差值</div>
-            <div className={`text-xl font-bold ${summary.metrics.net_limit > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-              {summary.metrics.net_limit > 0 ? '+' : ''}{summary.metrics.net_limit}
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-center items-center text-center">
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">封板率</div>
-            <div className="text-xl font-bold text-gray-900 dark:text-white">{summary.metrics.seal_rate}%</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-center items-center text-center">
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">连板晋级率</div>
-            <div className="text-xl font-bold text-gray-900 dark:text-white">{(summary.metrics.two_to_three_rate * 100).toFixed(1)}%</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-center items-center text-center">
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">涨跌比</div>
-            <div className="text-xl font-bold text-gray-900 dark:text-white">{summary.metrics.up_down_ratio.toFixed(2)}</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-center items-center text-center">
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">次日溢价</div>
-            <div className={`text-xl font-bold ${summary.metrics.next_day_premium > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-              {summary.metrics.next_day_premium.toFixed(2)}%
-            </div>
           </div>
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+      <div className="min-w-0 rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">历史情绪趋势 (30天平滑分)</h2>
-        <div className="w-full relative" style={{ height: '400px' }}>
+        <div className="relative h-[280px] w-full sm:h-[400px]">
           <div ref={chartContainerRef} className="absolute inset-0" />
         </div>
         <div className="mt-4 flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400 justify-center">
@@ -209,4 +183,8 @@ export default function Sentiment() {
       </div>
     </div>
   );
+}
+
+export default function Sentiment() {
+  return <Navigate to="/" replace />;
 }

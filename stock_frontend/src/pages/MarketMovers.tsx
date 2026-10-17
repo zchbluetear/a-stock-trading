@@ -19,7 +19,7 @@ export default function MarketMovers() {
   const [page, setPage] = useState(1);
   const { data, error, isFetching, refetch } = useQuery({
     queryKey: ['market-movers'], queryFn: () => stockAPI.getMarketMovers(),
-    refetchInterval: paused ? false : 5000, refetchIntervalInBackground: true,
+    refetchInterval: paused ? false : 60000, refetchIntervalInBackground: true,
     staleTime: 0, retry: false,
   });
   const snapshot = data?.snapshot;
