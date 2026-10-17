@@ -3,7 +3,7 @@ import Tasks from './Tasks';
 import Settings from './Settings';
 
 const tabs = [
-  { path: '/tasks', label: '评测', component: Tasks },
+  { path: '/tasks', label: 'AI评测', component: Tasks },
   { path: '/settings', label: '模型配置', component: Settings },
 ];
 
@@ -14,7 +14,6 @@ export default function AICenter() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI中心</h1>
       <nav aria-label="AI中心功能" className="-mx-1 overflow-x-auto px-1">
         <div className="flex min-w-max gap-2 border-b border-gray-200 dark:border-gray-700">
           {tabs.map((tab) => {

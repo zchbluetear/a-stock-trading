@@ -16,7 +16,6 @@ export default function StrategyCenter() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">策略中心</h1>
       <nav aria-label="策略功能" className="-mx-1 overflow-x-auto px-1">
         <div className="flex min-w-max gap-2 border-b border-gray-200 dark:border-gray-700">
           {tabs.map((tab) => {

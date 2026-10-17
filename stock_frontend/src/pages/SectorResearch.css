@@ -5,9 +5,10 @@
   --sr-paper:#fff;
   --sr-soft:#f9fafb;
   --sr-accent:#2563eb;
+  background-color:#f9fafb;
   color:var(--sr-ink);
   font-size:14px;
-  padding-top:12px;
+  padding-top:0;
   font-variant-numeric:tabular-nums;
 }
 
@@ -93,8 +94,9 @@
   gap:18px;
   padding:14px 16px;
   background:var(--sr-paper);
-  border:1px solid var(--sr-border);
-  border-radius:10px;
+  border:0;
+  border-radius:8px;
+  box-shadow:0 1px 3px rgb(0 0 0 / 0.1),0 1px 2px rgb(0 0 0 / 0.06);
 }
 
 .sr-source {
@@ -222,8 +224,9 @@
 
 .sr-panel {
   background:var(--sr-paper);
-  border:1px solid var(--sr-border);
-  border-radius:10px;
+  border:0;
+  border-radius:8px;
+  box-shadow:0 1px 3px rgb(0 0 0 / 0.1),0 1px 2px rgb(0 0 0 / 0.06);
   min-width:0;
 }
 
@@ -653,6 +656,7 @@
   --sr-paper:#1f2937;
   --sr-soft:#374151;
   --sr-accent:#60a5fa;
+  background-color:#111827;
 }
 
 .dark .sr-source button.active {

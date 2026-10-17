@@ -131,18 +131,18 @@ export default function StrategyConfig() {
       {/* 表格 */}
       <p className="mb-2 text-xs text-gray-500 dark:text-gray-400 lg:hidden">左右滑动表格，查看完整信息</p>
       <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="可横向滚动的数据表格">
-        <table className="w-full min-w-[480px] text-sm">
+        <table className="w-full min-w-[760px] text-sm">
           <thead>
             <tr className="border-b border-gray-200 dark:border-gray-600">
-              <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">字段</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 w-1/4">当前值</th>
-              <th className="px-4 py-3 w-24"></th>
+              <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">字段</th>
+              <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300 w-1/4">当前值</th>
+              <th className="px-4 py-2 w-16"></th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={3} className="text-center py-12 text-gray-400 dark:text-gray-500">暂无匹配数据</td>
+                <td colSpan={3} className="text-center py-8 text-gray-400 dark:text-gray-500">暂无匹配数据</td>
               </tr>
             ) : filtered.map((item, idx) => {
               const isEditing = editRow?.cfg_key === item.cfg_key;
@@ -155,12 +155,12 @@ export default function StrategyConfig() {
                   }`}
                 >
                   {/* 字段 */}
-                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
+                  <td className="px-4 py-2 text-gray-500 dark:text-gray-400">
                     {item.description ?? <span className="italic text-gray-300 dark:text-gray-600">—</span>}
                   </td>
 
                   {/* 当前值 */}
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-2">
                     {isEditing ? (
                       <input
                         type="text"
@@ -176,7 +176,7 @@ export default function StrategyConfig() {
                   </td>
 
                   {/* 操作 */}
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-2 text-right">
                     {isEditing ? (
                       <div className="flex gap-1.5 justify-end">
                         <button

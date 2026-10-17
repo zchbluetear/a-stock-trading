@@ -174,8 +174,8 @@ export function SentimentDashboard() {
           <div ref={chartContainerRef} className="absolute inset-0" />
         </div>
         <div className="mt-4 flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400 justify-center">
-          <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#FF4D4F] mr-2"></span>超强高潮 (80-100)</div>
-          <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#FA8C16] mr-2"></span>升温/强情绪 (60-79)</div>
+          <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#FF4D4F] mr-2"></span>超强 (80-100)</div>
+          <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#FA8C16] mr-2"></span>升温 (60-79)</div>
           <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#1890FF] mr-2"></span>震荡/中性 (40-59)</div>
           <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#52C41A] mr-2"></span>分歧/弱情绪 (20-39)</div>
           <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#722ED1] mr-2"></span>冰点恐慌 (0-19)</div>

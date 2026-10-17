@@ -225,9 +225,6 @@ export default function Strategy() {
               <thead className="bg-gray-50 dark:bg-gray-900">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    勾选
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     名称
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -257,14 +254,6 @@ export default function Strategy() {
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {data.stocks.map((stock) => (
                   <tr key={stock.code} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                    <td className="px-4 py-4 whitespace-nowrap text-sm">
-                      <input
-                        type="checkbox"
-                        checked={selectedCodes.includes(stock.code)}
-                        onChange={() => toggleSelectCode(stock.code)}
-                        className="rounded"
-                      />
-                    </td>
                     <td className="min-w-[150px] px-4 py-3 text-sm text-gray-900 dark:text-white">
                       <div className="font-medium">
                         {stock.name}（{stock.code}）
@@ -339,6 +328,13 @@ export default function Strategy() {
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          aria-label={`选择${stock.name}`}
+                          checked={selectedCodes.includes(stock.code)}
+                          onChange={() => toggleSelectCode(stock.code)}
+                          className="rounded"
+                        />
                         <Link
                           to={`/stock/${stock.code}`}
                           className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"

@@ -1,9 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import { stockAPI } from '../services/api';
-import { useWatchlistStore } from '../store/watchlistStore';
-import { useEffect } from 'react';
-import AIAnalyzeButton from '../components/AIAnalyzeButton';
 import { SentimentDashboard } from './Sentiment';
 
 // 判断是否在交易时间
@@ -29,12 +25,6 @@ function getRefetchInterval(): number {
 }
 
 export default function Home() {
-  const { items, fetchWatchlist } = useWatchlistStore();
-
-  useEffect(() => {
-    fetchWatchlist();
-  }, [fetchWatchlist]);
-
   const fetchIndexData = async (code: string) => {
     const apiUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5001`;
     const res = await fetch(`${apiUrl}/api/sina/realtime/${code}`);
@@ -78,39 +68,6 @@ export default function Home() {
 
       <SentimentDashboard />
 
-      {/* 自选股列表 */}
-      <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            自选股 <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">{items.length}</span>
-          </h2>
-          <Link
-            to="/watchlist"
-            className="rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 dark:border-gray-600 dark:text-blue-400 dark:hover:bg-gray-700"
-          >
-            管理自选
-          </Link>
-        </div>
-
-        {items.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-gray-300 py-8 text-center dark:border-gray-600">
-            <p className="text-gray-500 dark:text-gray-400">暂无自选股</p>
-            <Link
-              to="/watchlist"
-              className="mt-3 inline-flex rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              添加自选股
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {items.map((item) => (
-              <StockCard key={item.code} code={item.code} name={item.name} />
-            ))}
-          </div>
-        )}
-      </section>
-
     </div>
   );
 }
@@ -140,51 +97,6 @@ function IndexCard({ title, data, isLoading }: { title: string; data: any; isLoa
         </div>
       ) : (
         <div className="mt-3 text-sm text-gray-400">指数行情暂不可用</div>
-      )}
-    </div>
-  );
-}
-
-function StockCard({ code, name }: { code: string; name?: string }) {
-  const { data, isLoading } = useQuery({
-    queryKey: ['realtime', code],
-    queryFn: () => stockAPI.getRealtime(code),
-    refetchInterval: getRefetchInterval(),
-  });
-
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-lg transition-shadow">
-      <div className="flex justify-between items-start mb-2">
-        <Link to={`/stock/${code}`} className="flex-1">
-          <div>
-            <h3 className="font-bold text-lg text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
-              {name || code}
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{code}</p>
-          </div>
-        </Link>
-      </div>
-      {isLoading ? (
-        <div className="text-gray-400">加载中...</div>
-      ) : data ? (
-        <div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-            {data.current_price?.toFixed(2)}
-          </div>
-          <div
-            className={`text-lg font-semibold mb-3 ${
-              data.change_percent >= 0
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-green-600 dark:text-green-400'
-            }`}
-          >
-            {data.change_percent >= 0 ? '+' : ''}
-            {data.change_percent?.toFixed(2)}%
-          </div>
-          <AIAnalyzeButton code={code} className="w-full text-sm" />
-        </div>
-      ) : (
-        <div className="text-gray-400">数据获取失败</div>
       )}
     </div>
   );

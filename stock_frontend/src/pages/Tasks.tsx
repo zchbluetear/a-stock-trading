@@ -91,10 +91,6 @@ export default function Tasks() {
     <div className="min-w-0">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">AI 辩论任务</h1>
-          <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-            查看所有多专家辩论分析任务的状态和结果
-          </p>
         </div>
       </div>
 
@@ -216,4 +212,3 @@ export default function Tasks() {
     </div>
   );
 }
-

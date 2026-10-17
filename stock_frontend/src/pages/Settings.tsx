@@ -124,7 +124,6 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-white">系统配置</h1>
 
       {/* 后端地址配置 */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">

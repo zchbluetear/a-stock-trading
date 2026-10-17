@@ -39,7 +39,7 @@ export default function Auction() {
   const [addedMap, setAddedMap] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
 
-  const { data: stocks, isLoading, refetch, isFetching } = useQuery<LimitUpStock[]>({
+  const { data: stocks, isLoading } = useQuery<LimitUpStock[]>({
     queryKey: ['auction-sectors'],
     queryFn: () => stockAPI.getAuctionSectors(),
     refetchInterval: 10000,
@@ -123,30 +123,16 @@ export default function Auction() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">涨停股实时监控</h1>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {selectedCodes.length >= 2 && (
+      {selectedCodes.length >= 2 && (
+        <div className="flex justify-end">
             <button
               onClick={handleOpenMulti}
               className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
             >
               多选一 AI分析
             </button>
-          )}
-          <button
-            onClick={() => refetch()}
-            disabled={isLoading || isFetching}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 whitespace-nowrap"
-          >
-            <svg className={`h-5 w-5 ${isFetching ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            刷新数据
-          </button>
         </div>
-      </div>
+      )}
 
       {isLoading && !stocks ? (
         <div className="flex justify-center items-center h-64">
@@ -159,7 +145,6 @@ export default function Auction() {
             <table className="min-w-full whitespace-nowrap divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-10">选择</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">股票名称</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">首次封板</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-yellow-600 dark:text-yellow-400 uppercase tracking-wider">所属行业</th>
@@ -171,14 +156,6 @@ export default function Auction() {
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {stocks.map((stock, index) => (
                   <tr key={stock.code || index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                    <td className="px-4 py-4 whitespace-nowrap text-sm">
-                      <input
-                        type="checkbox"
-                        checked={selectedCodes.includes(stock.code)}
-                        onChange={() => toggleSelectCode(stock.code)}
-                        className="rounded"
-                      />
-                    </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
                       {stock.name}（{stock.code}）
                       {stock.continuous_days > 0 && (
@@ -206,6 +183,13 @@ export default function Auction() {
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          aria-label={`选择${stock.name}`}
+                          checked={selectedCodes.includes(stock.code)}
+                          onChange={() => toggleSelectCode(stock.code)}
+                          className="rounded"
+                        />
                         <Link
                           to={`/stock/${stock.code}`}
                           className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
