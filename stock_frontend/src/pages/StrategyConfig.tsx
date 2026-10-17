@@ -93,8 +93,8 @@ export default function StrategyConfig() {
   return (
     <div className="space-y-4">
       {/* 顶部工具栏 */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-full sm:w-48">
+      <div className="flex flex-nowrap items-center gap-2 sm:gap-3">
+        <div className="relative min-w-0 flex-1 sm:w-48 sm:flex-none">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
           </svg>
@@ -108,14 +108,14 @@ export default function StrategyConfig() {
         </div>
         <button
           onClick={load}
-          className="px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-1.5"
+            className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-gray-100 px-2 py-2 text-sm text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 sm:gap-1.5 sm:px-3"
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
           刷新
         </button>
-        <span className="text-sm text-gray-500 dark:text-gray-400">共 {configs.length} 项</span>
+        <span className="shrink-0 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400 sm:text-sm">共 {configs.length} 项</span>
       </div>
 
       {/* 保存提示 */}
@@ -129,15 +129,15 @@ export default function StrategyConfig() {
       )}
 
       {/* 表格 */}
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow dark:border-gray-700 dark:bg-gray-800">
+      <div className="w-full max-w-2xl overflow-hidden rounded-lg border border-gray-200 bg-white shadow dark:border-gray-700 dark:bg-gray-800">
         <p className="px-3 pt-3 mb-2 text-xs text-gray-500 dark:text-gray-400 lg:hidden">左右滑动表格，查看完整信息</p>
         <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="可横向滚动的数据表格">
-          <table className="w-full min-w-[760px] table-fixed whitespace-nowrap divide-y divide-gray-200 text-sm dark:divide-gray-700">
+          <table className="w-full min-w-[600px] table-fixed whitespace-nowrap divide-y divide-gray-200 text-sm dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th className="w-[38%] px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">字段</th>
-                <th className="w-[32%] px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">当前值</th>
-                <th className="w-24 px-4 py-3"></th>
+                <th className="w-[30%] px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">字段</th>
+                <th className="w-[25%] px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">当前值</th>
+                <th className="w-[45%] px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">操作</th>
             </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
@@ -169,17 +169,15 @@ export default function StrategyConfig() {
                         onChange={e => setEditRow({ ...editRow, draft: e.target.value })}
                         onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit(); }}
                         autoFocus
-                        className="w-full px-2 py-1 border border-blue-400 dark:border-blue-500 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white dark:bg-gray-900 dark:text-white"
+                        className="w-full rounded border border-blue-400 bg-white px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:border-blue-500 dark:bg-gray-900 dark:text-white"
                       />
                     ) : (
                       <span className="font-mono text-gray-900 dark:text-white">{item.cfg_value}</span>
                     )}
                   </td>
-
-                  {/* 操作 */}
-                  <td className="px-4 py-2 text-right text-sm">
+                  <td className="px-4 py-2 text-left text-sm">
                     {isEditing ? (
-                      <div className="flex flex-nowrap justify-end gap-1.5 whitespace-nowrap">
+                      <div className="flex flex-nowrap gap-1.5 whitespace-nowrap">
                         <button
                           onClick={commitEdit}
                           disabled={saving}
