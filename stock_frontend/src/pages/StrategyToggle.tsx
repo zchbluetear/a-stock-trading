@@ -228,7 +228,6 @@ export default function StrategyToggle() {
           <table className="w-full min-w-[760px] whitespace-nowrap divide-y divide-gray-200 text-sm dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">股票代码</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">股票名称</th>
                 <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">策略开启</th>
                 <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">是否暂停</th>
@@ -240,20 +239,15 @@ export default function StrategyToggle() {
             <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
             {filtered.length === 0 ? (
               <tr>
-                  <td colSpan={7} className="py-12 text-center text-gray-400 dark:text-gray-500">暂无数据</td>
+                  <td colSpan={6} className="py-12 text-center text-gray-400 dark:text-gray-500">暂无数据</td>
               </tr>
             ) : filtered.map((item) => (
               <tr
                 key={item.id}
                 className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
               >
-                <td className="px-4 py-4 text-sm">
-                  <code className="text-xs font-mono text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 px-1.5 py-0.5 rounded">
-                    {item.stock_code}
-                  </code>
-                </td>
                 <td className="px-4 py-4 text-sm text-gray-900 dark:text-white">
-                  {item.stock_name || '-'}
+                  <span className="font-bold">{item.stock_name || '-'}（{item.stock_code}）</span>
                 </td>
                 <td className="px-4 py-4 text-center text-sm">
                   <button
