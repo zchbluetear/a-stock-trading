@@ -110,6 +110,68 @@ export interface DebateJobStatus {
   updated_at: string;
 }
 
+export interface TradeTag {
+  id: number;
+  name: string;
+  color: string;
+}
+
+export interface TradeAction {
+  id: number;
+  log_id: number;
+  action_type: 'buy' | 'sell';
+  action_time: string;
+  price: number;
+  quantity: number;
+  fee: number;
+  fee_detail: { commission: number; stamp_duty: number; transfer_fee: number } | null;
+  logic: string | null;
+  created_at: string;
+}
+
+export interface TradingLogStatistics {
+  total_trades: number;
+  open_trades: number;
+  closed_trades: number;
+  total_profit: number;
+  total_fee: number;
+  net_profit: number;
+  win_count: number;
+  loss_count: number;
+  win_rate: number;
+  avg_profit: number;
+  avg_loss: number;
+  profit_loss_ratio: number;
+  max_single_profit: number;
+  max_single_profit_name: string;
+  max_single_loss: number;
+  max_single_loss_name: string;
+  avg_holding_days: number;
+}
+
+export interface TradingLog {
+  id: number;
+  code: string;
+  name: string;
+  buy_time: string;
+  buy_price: number;
+  buy_quantity: number;
+  buy_logic: string | null;
+  sell_time: string | null;
+  sell_price: number | null;
+  sell_quantity: number | null;
+  sell_logic: string | null;
+  status: 'open' | 'closed';
+  profit_amount: number | null;
+  profit_percent: number | null;
+  net_profit: number | null;
+  total_fee: number;
+  holding_quantity: number;
+  tags: TradeTag[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SentimentData {
   summary: {
     date: string;
@@ -466,6 +528,129 @@ class StockAPI {
       method: 'DELETE',
     });
     return data.success;
+  }
+
+  // ==================== 交易日志 API ====================
+
+  async getTradingLogs(params?: {
+    status?: string;
+    code?: string;
+    date_from?: string;
+    date_to?: string;
+    tag_id?: number;
+    page?: number;
+    per_page?: number;
+  }): Promise<{ items: TradingLog[]; total: number; page: number; per_page: number }> {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.code) query.set('code', params.code);
+    if (params?.date_from) query.set('date_from', params.date_from);
+    if (params?.date_to) query.set('date_to', params.date_to);
+    if (params?.tag_id) query.set('tag_id', String(params.tag_id));
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.per_page) query.set('per_page', String(params.per_page));
+    return this.request(`/api/trading-logs?${query.toString()}`);
+  }
+
+  async createTradingLog(data: {
+    code: string;
+    name?: string;
+    buy_time: string;
+    buy_price: number;
+    buy_quantity: number;
+    buy_logic?: string;
+  }): Promise<{ success: boolean; id: number }> {
+    return this.request('/api/trading-logs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateTradingLog(id: number, data: Record<string, any>): Promise<{ success: boolean }> {
+    return this.request(`/api/trading-logs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteTradingLog(id: number): Promise<{ success: boolean }> {
+    return this.request(`/api/trading-logs/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ==================== 交易统计 API ====================
+
+  async getTradingStatistics(params?: {
+    date_from?: string;
+    date_to?: string;
+    tag_id?: number;
+  }): Promise<TradingLogStatistics> {
+    const query = new URLSearchParams();
+    if (params?.date_from) query.set('date_from', params.date_from);
+    if (params?.date_to) query.set('date_to', params.date_to);
+    if (params?.tag_id) query.set('tag_id', String(params.tag_id));
+    return this.request(`/api/trading-logs/statistics?${query.toString()}`);
+  }
+
+  // ==================== 交易动作 API ====================
+
+  async getTradeActions(logId: number): Promise<TradeAction[]> {
+    return this.request(`/api/trading-logs/${logId}/actions`);
+  }
+
+  async addTradeAction(logId: number, data: {
+    action_type: 'buy' | 'sell';
+    action_time: string;
+    price: number;
+    quantity: number;
+    logic?: string;
+  }): Promise<{ success: boolean; id: number }> {
+    return this.request(`/api/trading-logs/${logId}/actions`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteTradeAction(logId: number, actionId: number): Promise<{ success: boolean }> {
+    return this.request(`/api/trading-logs/${logId}/actions/${actionId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ==================== 交易标签 API ====================
+
+  async getTradeTags(): Promise<TradeTag[]> {
+    return this.request('/api/trade-tags');
+  }
+
+  async createTradeTag(data: { name: string; color?: string }): Promise<{ success: boolean; id: number; name: string; color: string }> {
+    return this.request('/api/trade-tags', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteTradeTag(id: number): Promise<{ success: boolean }> {
+    return this.request(`/api/trade-tags/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async addLogTag(logId: number, tagId: number): Promise<{ success: boolean }> {
+    return this.request(`/api/trading-logs/${logId}/tags/${tagId}`, {
+      method: 'POST',
+    });
+  }
+
+  async removeLogTag(logId: number, tagId: number): Promise<{ success: boolean }> {
+    return this.request(`/api/trading-logs/${logId}/tags/${tagId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getLogTags(logId: number): Promise<TradeTag[]> {
+    return this.request(`/api/trading-logs/${logId}/tags`);
   }
 }
 

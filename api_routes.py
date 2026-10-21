@@ -25,7 +25,11 @@ from db import (
     get_agents, get_agent, create_agent, update_agent, delete_agent,
     get_cached_analysis, save_analysis_cache,
     create_debate_job, update_debate_job, get_debate_job, list_debate_jobs, cancel_debate_job, delete_debate_job,
-    upsert_volume_prediction, get_volume_predictions_dict
+    upsert_volume_prediction, get_volume_predictions_dict,
+    create_trading_log, get_trading_logs, get_trading_log, update_trading_log, delete_trading_log,
+    create_trade_action, get_trade_actions, delete_trade_action, recalculate_log_summary,
+    create_trade_tag, get_trade_tags, delete_trade_tag,
+    add_log_tag, remove_log_tag, get_log_tags, get_trading_log_statistics
 )
 from ai_service import AIService
 
@@ -1054,6 +1058,38 @@ def register_routes(app):
             except Exception as e:
                 sentiment_text = f"Sentiment data unavailable: {str(e)}"
 
+            # 获取大盘市场情绪指数（偏多头/偏空头环境）
+            try:
+                df_stats = get_market_sentiment_stats(days=5)
+                df_sentiment = calculate_market_sentiment(df_stats)
+                sentiment_summary = get_latest_sentiment_summary(df_sentiment)
+                score = sentiment_summary.get('sentiment_smooth', 50)
+                level = sentiment_summary.get('level', '震荡/中性')
+                metrics = sentiment_summary.get('metrics', {})
+                if score >= 60:
+                    bias_desc = '偏多头'
+                    env_hint = '市场赚钱效应良好，有利于多头运作，看多观点应得到更多权重'
+                elif score <= 40:
+                    bias_desc = '偏空头'
+                    env_hint = '市场亏钱效应明显，风险较高，看空观点应得到更多权重'
+                else:
+                    bias_desc = '中性震荡'
+                    env_hint = '市场情绪中性，多空力量相对均衡'
+                market_sentiment_context = (
+                    f"\n### Market Environment Sentiment (大盘情绪环境) ###\n"
+                    f"当前市场情绪: {level} ({bias_desc})\n"
+                    f"情绪平滑分数: {score:.1f}/100 (0=极度恐慌, 50=中性, 100=极度贪婪)\n"
+                    f"涨停数: {metrics.get('limit_up_count', 'N/A')}, 跌停数: {metrics.get('limit_down_count', 'N/A')}\n"
+                    f"封板率: {metrics.get('seal_rate', 'N/A')}%, 涨跌比: {metrics.get('up_down_ratio', 'N/A')}\n"
+                    f"环境判断: {env_hint}\n"
+                    f"IMPORTANT: 在分析、辩论和最终决策中，必须充分考虑当前大盘情绪环境。"
+                    f"当市场明显{bias_desc}时，{'看多方的论据应被赋予更高权重，不应仅因风险提示而偏向看空' if bias_desc == '偏多头' else '风险提示应被高度重视，不应盲目乐观'}。\n"
+                    f"### End Market Sentiment ###\n"
+                )
+            except Exception as e:
+                market_sentiment_context = "\n(市场情绪数据暂不可用，请基于个股数据独立判断)\n"
+                print(f"[API] 获取市场情绪失败: {e}")
+
             default_model_map = {
                 'openai': 'gpt-3.5-turbo',
                 'deepseek': 'deepseek-chat',
@@ -1092,6 +1128,7 @@ def register_routes(app):
                         f"{agent.prompt}\n\n"
                         f"{current_time_info}\n\n"
                         f"Stock Data:\n{formatted_data}\n\n"
+                        f"{market_sentiment_context}\n\n"
                         f"Sentiment Data:\n{sentiment_text}\n\n"
                         f"Round {round_idx} Analysis:\n"
                         f"Build on your previous analysis and provide new insights without repetition.\n\n"
@@ -1152,6 +1189,7 @@ def register_routes(app):
                         agent,
                         f"{agent.prompt}\n\n"
                         f"{current_time_info}\n\n"
+                        f"{market_sentiment_context}\n\n"
                         "You are participating in a multi-agent debate.\n\n"
                         f"Debate Round {round_idx}:\n"
                         "Respond with counterarguments, supporting evidence, and actionable insights.\n"
@@ -1208,8 +1246,11 @@ def register_routes(app):
                 "Use tables and bullet points where appropriate for readability.\n"
                 "Provide a clear trading operation suggestion in the Final Recommendation section.\n\n"
                 f"Stock Data (key fields):\n{formatted_data}\n\n"
+                f"{market_sentiment_context}\n\n"
                 f"Sentiment Summary:\n{sentiment_text}\n\n"
                 f"Transcript:\n{transcript}\n\n"
+                "IMPORTANT: 最终建议必须与当前大盘情绪环境一致。如果市场明显偏多头，最终结论不应仅因风险因素就偏向看空；"
+                "如果市场明显偏空头，最终结论应重视风险警示。请在 Final Recommendation 中明确引用市场情绪环境作为决策依据之一。\n\n"
                 "Please output the report in Chinese."
             )
 
@@ -1276,6 +1317,39 @@ def register_routes(app):
                     stock_blocks.append(f"Stock {code_str}:\nData unavailable: {str(e)}")
 
             combined_data = "\n\n".join(stock_blocks)
+
+            # 获取大盘市场情绪指数（偏多头/偏空头环境）
+            try:
+                df_stats = get_market_sentiment_stats(days=5)
+                df_sentiment = calculate_market_sentiment(df_stats)
+                sentiment_summary = get_latest_sentiment_summary(df_sentiment)
+                score = sentiment_summary.get('sentiment_smooth', 50)
+                level = sentiment_summary.get('level', '震荡/中性')
+                metrics = sentiment_summary.get('metrics', {})
+                if score >= 60:
+                    bias_desc = '偏多头'
+                    env_hint = '市场赚钱效应良好，有利于多头运作，看多观点应得到更多权重'
+                elif score <= 40:
+                    bias_desc = '偏空头'
+                    env_hint = '市场亏钱效应明显，风险较高，看空观点应得到更多权重'
+                else:
+                    bias_desc = '中性震荡'
+                    env_hint = '市场情绪中性，多空力量相对均衡'
+                market_sentiment_context = (
+                    f"\n### Market Environment Sentiment (大盘情绪环境) ###\n"
+                    f"当前市场情绪: {level} ({bias_desc})\n"
+                    f"情绪平滑分数: {score:.1f}/100 (0=极度恐慌, 50=中性, 100=极度贪婪)\n"
+                    f"涨停数: {metrics.get('limit_up_count', 'N/A')}, 跌停数: {metrics.get('limit_down_count', 'N/A')}\n"
+                    f"封板率: {metrics.get('seal_rate', 'N/A')}%, 涨跌比: {metrics.get('up_down_ratio', 'N/A')}\n"
+                    f"环境判断: {env_hint}\n"
+                    f"IMPORTANT: 在分析、辩论和最终决策中，必须充分考虑当前大盘情绪环境。"
+                    f"当市场明显{bias_desc}时，{'看多方的论据应被赋予更高权重，不应仅因风险提示而偏向看空' if bias_desc == '偏多头' else '风险提示应被高度重视，不应盲目乐观'}。\n"
+                    f"### End Market Sentiment ###\n"
+                )
+            except Exception as e:
+                market_sentiment_context = "\n(市场情绪数据暂不可用，请基于个股数据独立判断)\n"
+                print(f"[API] 获取市场情绪失败: {e}")
+
             multi_instruction = (
                 "You must choose exactly ONE stock to invest in from the list below. "
                 "A capital MUST be allocated to one of these stocks. "
@@ -1312,6 +1386,7 @@ def register_routes(app):
                         f"{current_time_info}\n\n"
                         "Multi-Stock Selection Task:\n"
                         f"{combined_data}\n\n"
+                        f"{market_sentiment_context}\n\n"
                         f"{multi_instruction}\n\n"
                         f"Round {round_idx} Analysis:\n"
                         "Provide new insights and clearly state your preferred stock.\n\n"
@@ -1372,6 +1447,7 @@ def register_routes(app):
                         agent,
                         f"{agent.prompt}\n\n"
                         f"{current_time_info}\n\n"
+                        f"{market_sentiment_context}\n\n"
                         "You are participating in a multi-agent debate for a multi-stock selection task.\n"
                         f"{multi_instruction}\n\n"
                         f"Debate Round {round_idx}:\n"
@@ -1420,7 +1496,10 @@ def register_routes(app):
                 "You must choose exactly ONE stock to buy from the candidates.\n"
                 "Be bold, concise, and action-oriented. No hedging.\n\n"
                 f"Candidates:\n{combined_data}\n\n"
+                f"{market_sentiment_context}\n\n"
                 f"Debate Transcript:\n{transcript}\n\n"
+                "IMPORTANT: 最终决策必须与当前大盘情绪环境一致。如果市场明显偏多头，应更倾向于选择进攻性强的标的；"
+                "如果市场明显偏空头，应优先选择防御性或确定性更高的标的。请在决策中明确引用市场情绪环境。\n\n"
                 "Output a Markdown report with sections: Final Choice, Rationale, Entry Plan, Risk Control.\n"
                 "Please output in Chinese."
             )
@@ -2425,3 +2504,359 @@ def register_routes(app):
         finally:
             if conn:
                 conn.close()
+
+    # ==================== 交易日志 API ====================
+
+    # --- 数据迁移：为旧记录生成 TradeAction ---
+    def _migrate_trading_logs():
+        """一次性迁移：为每条已有 TradingLog 生成对应的 TradeAction"""
+        db = SessionLocal()
+        try:
+            from models import TradeAction as TA
+            logs = db.query(models.TradingLog).all()
+            for log in logs:
+                existing = db.query(TA).filter(TA.log_id == log.id).count()
+                if existing > 0:
+                    continue  # 已有 action，跳过
+                # 创建买入 action
+                from utils import calculate_trading_fee as calc_fee
+                fee_info = calc_fee(log.buy_price, log.buy_quantity, 'buy')
+                buy_action = TA(
+                    log_id=log.id,
+                    action_type='buy',
+                    action_time=log.buy_time,
+                    price=log.buy_price,
+                    quantity=log.buy_quantity,
+                    fee=fee_info['total'],
+                    fee_detail=json.dumps(fee_info, ensure_ascii=False),
+                    logic=log.buy_logic
+                )
+                db.add(buy_action)
+                # 更新汇总字段
+                log.total_fee = fee_info['total']
+                log.holding_quantity = log.buy_quantity
+                # 如果有卖出信息，创建卖出 action
+                if log.sell_price is not None and log.sell_quantity is not None:
+                    sell_fee_info = calc_fee(log.sell_price, log.sell_quantity, 'sell')
+                    sell_action = TA(
+                        log_id=log.id,
+                        action_type='sell',
+                        action_time=log.sell_time or log.buy_time,
+                        price=log.sell_price,
+                        quantity=log.sell_quantity,
+                        fee=sell_fee_info['total'],
+                        fee_detail=json.dumps(sell_fee_info, ensure_ascii=False),
+                        logic=log.sell_logic
+                    )
+                    db.add(sell_action)
+                    log.total_fee = round(fee_info['total'] + sell_fee_info['total'], 2)
+                    log.holding_quantity = log.buy_quantity - log.sell_quantity
+                log.updated_at = datetime.now()
+            db.commit()
+            print("[Migration] 交易日志 TradeAction 迁移完成")
+        except Exception as e:
+            print(f"[Migration] 交易日志迁移失败: {e}")
+            db.rollback()
+        finally:
+            db.close()
+
+    _migrate_trading_logs()
+
+    @app.route('/api/trading-logs', methods=['GET'])
+    def list_trading_logs():
+        """查询交易日志列表"""
+        db = next(get_db())
+        try:
+            status = request.args.get('status')
+            code = request.args.get('code')
+            date_from = request.args.get('date_from')
+            date_to = request.args.get('date_to')
+            tag_id = request.args.get('tag_id', type=int)
+            page = int(request.args.get('page', 1))
+            per_page = int(request.args.get('per_page', 50))
+            items, total = get_trading_logs(db, status=status, code=code,
+                                            date_from=date_from, date_to=date_to,
+                                            tag_id=tag_id, page=page, per_page=per_page)
+            result = []
+            for item in items:
+                profit_amount = None
+                profit_percent = None
+                net_profit = None
+                if item.sell_price is not None and item.sell_quantity is not None:
+                    profit_amount = round((item.sell_price - item.buy_price) * item.sell_quantity, 2)
+                    profit_percent = round((item.sell_price - item.buy_price) / item.buy_price * 100, 2) if item.buy_price else 0
+                    net_profit = round(profit_amount - (item.total_fee or 0), 2)
+                # 获取标签
+                tags = get_log_tags(db, item.id)
+                result.append({
+                    'id': item.id,
+                    'code': item.code,
+                    'name': item.name,
+                    'buy_time': item.buy_time.strftime('%Y-%m-%d %H:%M:%S') if item.buy_time else None,
+                    'buy_price': item.buy_price,
+                    'buy_quantity': item.buy_quantity,
+                    'buy_logic': item.buy_logic,
+                    'sell_time': item.sell_time.strftime('%Y-%m-%d %H:%M:%S') if item.sell_time else None,
+                    'sell_price': item.sell_price,
+                    'sell_quantity': item.sell_quantity,
+                    'sell_logic': item.sell_logic,
+                    'status': item.status,
+                    'profit_amount': profit_amount,
+                    'profit_percent': profit_percent,
+                    'net_profit': net_profit,
+                    'total_fee': item.total_fee or 0,
+                    'holding_quantity': item.holding_quantity if item.holding_quantity is not None else item.buy_quantity,
+                    'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in tags],
+                    'created_at': item.created_at.strftime('%Y-%m-%d %H:%M:%S') if item.created_at else None,
+                    'updated_at': item.updated_at.strftime('%Y-%m-%d %H:%M:%S') if item.updated_at else None,
+                })
+            return jsonify({'items': result, 'total': total, 'page': page, 'per_page': per_page})
+        finally:
+            db.close()
+
+    @app.route('/api/trading-logs', methods=['POST'])
+    def create_trading_log_api():
+        """新建交易记录（买入）"""
+        db = next(get_db())
+        try:
+            data = request.get_json()
+            if not data or not data.get('code') or not data.get('buy_time') or data.get('buy_price') is None or not data.get('buy_quantity'):
+                return jsonify({'success': False, 'error': '缺少必填字段：code, buy_time, buy_price, buy_quantity'}), 400
+            # 支持 datetime-local 格式和标准格式
+            bt_str = data['buy_time']
+            try:
+                buy_time = datetime.strptime(bt_str, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                buy_time = datetime.strptime(bt_str, '%Y-%m-%d %H:%M:%S')
+            log = create_trading_log(
+                db,
+                code=data['code'],
+                name=data.get('name', ''),
+                buy_time=buy_time,
+                buy_price=float(data['buy_price']),
+                buy_quantity=int(data['buy_quantity']),
+                buy_logic=data.get('buy_logic')
+            )
+            return jsonify({'success': True, 'id': log.id})
+        except Exception as e:
+            print(f"[API] 创建交易记录失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            db.close()
+
+    @app.route('/api/trading-logs/<int:log_id>', methods=['PUT'])
+    def update_trading_log_api(log_id):
+        """更新交易记录（补录卖出等）"""
+        db = next(get_db())
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'success': False, 'error': '缺少更新数据'}), 400
+            update_data = {}
+            for field in ['name', 'buy_time', 'buy_price', 'buy_quantity', 'buy_logic',
+                          'sell_time', 'sell_price', 'sell_quantity', 'sell_logic', 'status']:
+                if field in data:
+                    if field in ('buy_time', 'sell_time') and data[field]:
+                        try:
+                            update_data[field] = datetime.strptime(data[field], '%Y-%m-%dT%H:%M')
+                        except ValueError:
+                            update_data[field] = datetime.strptime(data[field], '%Y-%m-%d %H:%M:%S')
+                    elif field in ('buy_price', 'sell_price') and data[field] is not None:
+                        update_data[field] = float(data[field])
+                    elif field in ('buy_quantity', 'sell_quantity') and data[field] is not None:
+                        update_data[field] = int(data[field])
+                    else:
+                        update_data[field] = data[field]
+            log = update_trading_log(db, log_id, **update_data)
+            if not log:
+                return jsonify({'success': False, 'error': '记录不存在'}), 404
+            return jsonify({'success': True})
+        except Exception as e:
+            print(f"[API] 更新交易记录失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            db.close()
+
+    @app.route('/api/trading-logs/<int:log_id>', methods=['DELETE'])
+    def delete_trading_log_api(log_id):
+        """删除交易记录"""
+        db = next(get_db())
+        try:
+            ok = delete_trading_log(db, log_id)
+            if not ok:
+                return jsonify({'success': False, 'error': '记录不存在'}), 404
+            return jsonify({'success': True})
+        except Exception as e:
+            print(f"[API] 删除交易记录失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            db.close()
+
+    # ==================== 交易统计 API ====================
+
+    @app.route('/api/trading-logs/statistics', methods=['GET'])
+    def trading_logs_statistics():
+        """获取交易统计指标"""
+        db = next(get_db())
+        try:
+            date_from = request.args.get('date_from')
+            date_to = request.args.get('date_to')
+            tag_id = request.args.get('tag_id', type=int)
+            stats = get_trading_log_statistics(db, date_from=date_from, date_to=date_to, tag_id=tag_id)
+            return jsonify(stats)
+        finally:
+            db.close()
+
+    # ==================== 交易动作 API ====================
+
+    @app.route('/api/trading-logs/<int:log_id>/actions', methods=['GET'])
+    def list_trade_actions(log_id):
+        """获取某笔交易的所有操作明细"""
+        db = next(get_db())
+        try:
+            actions = get_trade_actions(db, log_id)
+            result = []
+            for a in actions:
+                result.append({
+                    'id': a.id,
+                    'log_id': a.log_id,
+                    'action_type': a.action_type,
+                    'action_time': a.action_time.strftime('%Y-%m-%d %H:%M:%S') if a.action_time else None,
+                    'price': a.price,
+                    'quantity': a.quantity,
+                    'fee': a.fee,
+                    'fee_detail': json.loads(a.fee_detail) if a.fee_detail else None,
+                    'logic': a.logic,
+                    'created_at': a.created_at.strftime('%Y-%m-%d %H:%M:%S') if a.created_at else None,
+                })
+            return jsonify(result)
+        finally:
+            db.close()
+
+    @app.route('/api/trading-logs/<int:log_id>/actions', methods=['POST'])
+    def add_trade_action(log_id):
+        """为某笔交易新增一次买/卖操作"""
+        db = next(get_db())
+        try:
+            data = request.get_json()
+            if not data or not data.get('action_type') or not data.get('action_time') or data.get('price') is None or not data.get('quantity'):
+                return jsonify({'success': False, 'error': '缺少必填字段：action_type, action_time, price, quantity'}), 400
+            # 支持 datetime-local 和标准格式
+            at_str = data['action_time']
+            try:
+                action_time = datetime.strptime(at_str, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                action_time = datetime.strptime(at_str, '%Y-%m-%d %H:%M:%S')
+            action, err = create_trade_action(
+                db,
+                log_id=log_id,
+                action_type=data['action_type'],
+                action_time=action_time,
+                price=float(data['price']),
+                quantity=int(data['quantity']),
+                logic=data.get('logic')
+            )
+            if err:
+                return jsonify({'success': False, 'error': err}), 400
+            return jsonify({'success': True, 'id': action.id})
+        except Exception as e:
+            print(f"[API] 新增交易动作失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            db.close()
+
+    @app.route('/api/trading-logs/<int:log_id>/actions/<int:action_id>', methods=['DELETE'])
+    def remove_trade_action(log_id, action_id):
+        """删除某次操作并重算汇总"""
+        db = next(get_db())
+        try:
+            ok = delete_trade_action(db, action_id)
+            if not ok:
+                return jsonify({'success': False, 'error': '操作不存在'}), 404
+            return jsonify({'success': True})
+        except Exception as e:
+            print(f"[API] 删除交易动作失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            db.close()
+
+    # ==================== 交易标签 API ====================
+
+    @app.route('/api/trade-tags', methods=['GET'])
+    def list_trade_tags():
+        """获取所有交易标签"""
+        db = next(get_db())
+        try:
+            tags = get_trade_tags(db)
+            return jsonify([{'id': t.id, 'name': t.name, 'color': t.color} for t in tags])
+        finally:
+            db.close()
+
+    @app.route('/api/trade-tags', methods=['POST'])
+    def create_trade_tag_api():
+        """创建交易标签"""
+        db = next(get_db())
+        try:
+            data = request.get_json()
+            if not data or not data.get('name'):
+                return jsonify({'success': False, 'error': '标签名称不能为空'}), 400
+            tag, is_new = create_trade_tag(db, name=data['name'], color=data.get('color', '#6366f1'))
+            if not is_new:
+                return jsonify({'success': False, 'error': '标签已存在'}), 400
+            return jsonify({'success': True, 'id': tag.id, 'name': tag.name, 'color': tag.color})
+        except Exception as e:
+            print(f"[API] 创建标签失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            db.close()
+
+    @app.route('/api/trade-tags/<int:tag_id>', methods=['DELETE'])
+    def delete_trade_tag_api(tag_id):
+        """删除交易标签"""
+        db = next(get_db())
+        try:
+            ok = delete_trade_tag(db, tag_id)
+            if not ok:
+                return jsonify({'success': False, 'error': '标签不存在'}), 404
+            return jsonify({'success': True})
+        except Exception as e:
+            print(f"[API] 删除标签失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            db.close()
+
+    @app.route('/api/trading-logs/<int:log_id>/tags/<int:tag_id>', methods=['POST'])
+    def add_tag_to_log(log_id, tag_id):
+        """给交易记录添加标签"""
+        db = next(get_db())
+        try:
+            add_log_tag(db, log_id, tag_id)
+            return jsonify({'success': True})
+        except Exception as e:
+            print(f"[API] 添加标签失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            db.close()
+
+    @app.route('/api/trading-logs/<int:log_id>/tags/<int:tag_id>', methods=['DELETE'])
+    def remove_tag_from_log(log_id, tag_id):
+        """移除交易记录的标签"""
+        db = next(get_db())
+        try:
+            remove_log_tag(db, log_id, tag_id)
+            return jsonify({'success': True})
+        except Exception as e:
+            print(f"[API] 移除标签失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            db.close()
+
+    @app.route('/api/trading-logs/<int:log_id>/tags', methods=['GET'])
+    def get_log_tags_api(log_id):
+        """获取交易记录的所有标签"""
+        db = next(get_db())
+        try:
+            tags = get_log_tags(db, log_id)
+            return jsonify([{'id': t.id, 'name': t.name, 'color': t.color} for t in tags])
+        finally:
+            db.close()

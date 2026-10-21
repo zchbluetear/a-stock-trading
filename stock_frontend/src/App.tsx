@@ -10,6 +10,7 @@ import MarketMovers from './pages/MarketMovers';
 import StrategyCenter from './pages/StrategyCenter';
 import AIDebate from './pages/AIDebate';
 import Auction from './pages/Auction';
+import TradingLogs from './pages/TradingLogs';
 import Layout from './components/Layout';
 import './index.css';
 
@@ -42,6 +43,7 @@ function App() {
             <Route path="/strategy-toggle" element={<StrategyCenter />} />
             <Route path="/auction" element={<Auction />} />
             <Route path="/ai-debate" element={<AIDebate />} />
+            <Route path="/trading-logs" element={<TradingLogs />} />
           </Routes>
         </Layout>
       </BrowserRouter>

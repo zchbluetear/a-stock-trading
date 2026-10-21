@@ -5,6 +5,48 @@
 """
 
 
+def calculate_trading_fee(price, quantity, direction,
+                          commission_rate=0.00025,
+                          min_commission=5.0,
+                          stamp_duty_rate=0.0005,
+                          transfer_fee_rate=0.00001):
+    """
+    计算A股交易手续费
+    
+    Args:
+        price: 交易价格
+        quantity: 交易数量（股）
+        direction: 'buy' 或 'sell'
+        commission_rate: 佣金费率，默认万 2.5
+        min_commission: 最低佣金，默认 5 元
+        stamp_duty_rate: 印花税费率，千 0.5（仅卖出）
+        transfer_fee_rate: 过户费率，万 0.1
+    
+    Returns:
+        dict: {commission, stamp_duty, transfer_fee, total}
+    """
+    amount = price * quantity
+    
+    # 佣金：买卖都收，最低 5 元
+    commission = max(amount * commission_rate, min_commission)
+    commission = round(commission, 2)
+    
+    # 印花税：仅卖出时收取
+    stamp_duty = round(amount * stamp_duty_rate, 2) if direction == 'sell' else 0
+    
+    # 过户费：买卖都收
+    transfer_fee = round(amount * transfer_fee_rate, 2)
+    
+    total = round(commission + stamp_duty + transfer_fee, 2)
+    
+    return {
+        'commission': commission,
+        'stamp_duty': stamp_duty,
+        'transfer_fee': transfer_fee,
+        'total': total
+    }
+
+
 def get_stock_code_format(code):
     """转换股票代码格式（用于新浪API）"""
     code_str = str(code).strip()

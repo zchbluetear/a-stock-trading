@@ -13,6 +13,7 @@ export default function Layout({ children }: LayoutProps) {
     { path: '/sectors', label: '板块强度' },
     { path: '/auction', label: '涨停池' },
     { path: '/watchlist', label: '自选' },
+    { path: '/trading-logs', label: '交易记录' },
     { path: '/strategy', label: '策略中心' },
     { path: '/tasks', label: 'AI中心' },
   ];

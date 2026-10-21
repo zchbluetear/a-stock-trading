@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function Tasks() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [search, setSearch] = useState<string>('');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -24,6 +25,15 @@ export default function Tasks() {
   }, [location.pathname, refetch]);
 
   const jobs: DebateJobStatus[] = jobsData || [];
+
+  // 过滤任务列表
+  const filteredJobs = jobs.filter(job => {
+    if (!search) return true;
+    const searchLower = search.toLowerCase();
+    const codeMatch = job.code?.toLowerCase().includes(searchLower);
+    const nameMatch = job.name?.toLowerCase().includes(searchLower);
+    return codeMatch || nameMatch;
+  });
 
   const handleStopJob = async (jobId: string) => {
     try {
@@ -94,49 +104,65 @@ export default function Tasks() {
         </div>
       </div>
 
-      {/* 状态筛选 */}
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          onClick={() => setStatusFilter('all')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            statusFilter === 'all'
-              ? 'bg-blue-600 text-white'
-              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-          }`}
-        >
-          全部
-        </button>
-        <button
-          onClick={() => setStatusFilter('running')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            statusFilter === 'running'
-              ? 'bg-blue-600 text-white'
-              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-          }`}
-        >
-          进行中
-        </button>
-        <button
-          onClick={() => setStatusFilter('completed')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            statusFilter === 'completed'
-              ? 'bg-blue-600 text-white'
-              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-          }`}
-        >
-          已完成
-        </button>
+      {/* 状态筛选和搜索 */}
+      <div className="mt-4 flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              statusFilter === 'all'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+          >
+            全部
+          </button>
+          <button
+            onClick={() => setStatusFilter('running')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              statusFilter === 'running'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+          >
+            进行中
+          </button>
+          <button
+            onClick={() => setStatusFilter('completed')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              statusFilter === 'completed'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+          >
+            已完成
+          </button>
+        </div>
+        <div className="relative sm:w-64">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="搜索代码 / 名称"
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </div>
       </div>
 
       {/* 任务列表 */}
       <div className="mt-6 flow-root">
-        {jobs.length === 0 ? (
+        {filteredJobs.length === 0 ? (
           <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg">
-            <p className="text-gray-500 dark:text-gray-400">暂无任务记录</p>
+            <p className="text-gray-500 dark:text-gray-400">
+              {jobs.length === 0 ? '暂无任务记录' : '未找到匹配的任务'}
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {jobs.map((job) => (
+            {filteredJobs.map((job) => (
               <div
                 key={job.job_id}
                 className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
