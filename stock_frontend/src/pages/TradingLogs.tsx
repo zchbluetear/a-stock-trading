@@ -405,7 +405,7 @@ export default function TradingLogs() {
           刷新
         </button>
         {/* 桌面端：新增买入 + 标签管理同行 */}
-        <div className="hidden sm:flex gap-2">
+        <div className="hidden sm:flex gap-2 whitespace-nowrap">
           <button onClick={() => { setIsAdding(!isAdding); setDetailId(null); setBuyForm(defaultBuyForm); }}
             className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-blue-600 px-2 py-2 text-sm text-white hover:bg-blue-700 sm:gap-1.5 sm:px-3">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
