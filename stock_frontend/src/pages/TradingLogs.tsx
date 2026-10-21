@@ -397,14 +397,18 @@ export default function TradingLogs() {
       {showTagManager && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-purple-200 dark:border-purple-800">
           <h3 className="font-medium text-gray-900 dark:text-white mb-3">标签管理</h3>
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-3">
             <input type="text" value={newTagName} onChange={e => setNewTagName(e.target.value)}
               placeholder="标签名称" maxLength={10}
-              className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 dark:text-white" />
-            <input type="color" value={newTagColor} onChange={e => setNewTagColor(e.target.value)}
-              className="w-8 h-8 rounded cursor-pointer" />
+              className="w-full sm:w-auto px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 dark:text-white" />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <label className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">颜色:</label>
+              <input type="color" value={newTagColor} onChange={e => setNewTagColor(e.target.value)}
+                className="w-10 h-10 sm:w-8 sm:h-8 rounded cursor-pointer border border-gray-300 dark:border-gray-600 p-0.5" />
+              <span className="text-xs text-gray-400 font-mono">{newTagColor}</span>
+            </div>
             <button onClick={handleCreateTag}
-              className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">添加</button>
+              className="w-full sm:w-auto px-3 py-1.5 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">添加</button>
           </div>
           <div className="flex flex-wrap gap-2">
             {allTags.map(t => (
