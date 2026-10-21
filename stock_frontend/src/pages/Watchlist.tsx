@@ -353,7 +353,7 @@ function WatchlistItem({
                 {realtimeData.current_price?.toFixed(2) || '--'}
             </div>
             <div className={`whitespace-nowrap text-sm font-semibold sm:text-lg ${isUp ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-              {isUp ? '+' : ''}{changeValue.toFixed(2)}
+              {isUp ? '+' : ''}{changePercent.toFixed(2)}%
             </div>
           </div>
         ) : (
