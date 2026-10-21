@@ -340,7 +340,7 @@ function WatchlistItem({
       <Link to={`/stock/${item.code}`} className="flex min-w-0 flex-1 items-center justify-between gap-1.5 sm:gap-4">
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold text-gray-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400 sm:text-lg">
-            {item.name || item.code}<span className="ml-1 font-normal text-gray-500 dark:text-gray-400">({item.code})</span>
+            {item.name || item.code}
           </div>
         </div>
 
