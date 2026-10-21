@@ -45,10 +45,17 @@ export default function TradingLogs() {
 
   // 筛选
   const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // 输入框的实时值
   const [statusFilter, setStatusFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [tagFilter, setTagFilter] = useState<number | null>(null);
+
+  // 手动触发搜索（按回车或失焦时）
+  const handleSearchSubmit = () => {
+    setSearch(searchInput);
+    setPage(1); // 重置到第一页
+  };
 
   // 分页
   const [page, setPage] = useState(1);
@@ -353,7 +360,9 @@ export default function TradingLogs() {
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
             </svg>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+            <input type="text" value={searchInput} onChange={e => setSearchInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSearchSubmit()}
+              onBlur={handleSearchSubmit}
               placeholder="搜索代码 / 名称"
               className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
@@ -432,41 +441,6 @@ export default function TradingLogs() {
             标签管理
           </button>
         </div>
-        {/* 手机端分页控件（标签管理后面） */}
-        {total > 0 && (
-          <div className="sm:hidden flex items-center justify-between gap-2">
-            <select
-              value={perPage}
-              onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
-              className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              <option value={5}>5条/页</option>
-              <option value={10}>10条/页</option>
-              <option value={20}>20条/页</option>
-            </select>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-              >
-                ◀
-              </button>
-              <span className="px-2 py-1 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                {page}/{Math.ceil(total / perPage)}
-              </span>
-              <button
-                onClick={() => setPage(p => Math.min(Math.ceil(total / perPage), p + 1))}
-                disabled={page >= Math.ceil(total / perPage)}
-                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-              >
-                ▶
-              </button>
-              <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">共{total}条</span>
-            </div>
-          </div>
-        )}
-        <span className="hidden whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 sm:inline">共 {total} 条</span>
       </div>
 
       {/* 标签管理模态 */}
@@ -519,7 +493,7 @@ export default function TradingLogs() {
             <div>
               <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">买入时间*</label>
               <input type="datetime-local" value={buyForm.buy_time} onChange={e => setBuyForm({ ...buyForm, buy_time: e.target.value })}
-                className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white dark:bg-gray-700 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                className="w-full min-w-0 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white dark:bg-gray-700 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-datetime-edit]:p-0 [&::-webkit-datetime-edit-fields-wrapper]:p-0"
                 style={{ font: 'inherit' }} />
             </div>
             <div>
@@ -632,8 +606,10 @@ export default function TradingLogs() {
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">交易操作时间线</p>
               <div className="flex gap-2">
-                <button onClick={() => { setActionForm({ ...defaultActionForm, action_type: 'buy' }); setShowActionForm(true); }}
-                  className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700">追加买入</button>
+                {detailLog.status === 'open' && (
+                  <button onClick={() => { setActionForm({ ...defaultActionForm, action_type: 'buy' }); setShowActionForm(true); }}
+                    className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700">追加买入</button>
+                )}
                 {detailLog.status === 'open' && (
                   <button onClick={() => { setActionForm({ ...defaultActionForm, action_type: 'sell' }); setShowActionForm(true); }}
                     className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700">追加卖出</button>
@@ -652,7 +628,8 @@ export default function TradingLogs() {
                     <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">时间*</label>
                     <input type="datetime-local" value={actionForm.action_time}
                       onChange={e => setActionForm({ ...actionForm, action_time: e.target.value })}
-                      className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 dark:text-white" />
+                      className="w-full min-w-0 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-datetime-edit]:p-0 [&::-webkit-datetime-edit-fields-wrapper]:p-0"
+                      style={{ font: 'inherit' }} />
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">价格*</label>
@@ -848,26 +825,61 @@ export default function TradingLogs() {
           </table>
         </div>
 
-        {/* 分页控件（仅桌面端） */}
+        {/* 分页控件 */}
         {total > 0 && (
-          <div className="hidden sm:flex items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-            <div className="text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
-              共 <span className="font-semibold">{total}</span> 条记录
-            </div>
-            <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-              {/* 每页显示数量 */}
+          <div className="flex items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+            {/* 移动端：简化版 */}
+            <div className="sm:hidden flex items-center gap-2">
               <select
                 value={perPage}
                 onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
-                className="w-full sm:w-auto px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value={5}>5条/页</option>
                 <option value={10}>10条/页</option>
                 <option value={20}>20条/页</option>
               </select>
-
-              {/* 分页按钮 */}
               <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                >
+                  ◀
+                </button>
+                <span className="px-2 py-1 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                  {page}/{Math.ceil(total / perPage)}
+                </span>
+                <button
+                  onClick={() => setPage(p => Math.min(Math.ceil(total / perPage), p + 1))}
+                  disabled={page >= Math.ceil(total / perPage)}
+                  className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                >
+                  ▶
+                </button>
+              </div>
+              <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">共{total}条</span>
+            </div>
+
+            {/* 桌面端：完整版 */}
+            <div className="hidden sm:flex items-center justify-between w-full">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                共 <span className="font-semibold">{total}</span> 条记录
+              </div>
+              <div className="flex items-center gap-2">
+                {/* 每页显示数量 */}
+                <select
+                  value={perPage}
+                  onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
+                  className="w-full sm:w-auto px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value={5}>5条/页</option>
+                  <option value={10}>10条/页</option>
+                  <option value={20}>20条/页</option>
+                </select>
+
+                {/* 分页按钮 */}
+                <div className="flex items-center gap-1">
                 <button
                   onClick={() => setPage(1)}
                   disabled={page === 1}
@@ -906,6 +918,7 @@ export default function TradingLogs() {
               </div>
             </div>
           </div>
+        </div>
         )}
       </div>
     </div>
