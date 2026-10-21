@@ -228,11 +228,11 @@ export default function StrategyToggle() {
           <table className="w-full min-w-[760px] whitespace-nowrap divide-y divide-gray-200 text-sm dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">股票名称</th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">策略开启</th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">是否暂停</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">策略类型</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">更新时间</th>
+                <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">股票名称</th>
+                <th className="px-4 py-3 text-center text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">策略开启</th>
+                <th className="px-4 py-3 text-center text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">是否暂停</th>
+                <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">策略类型</th>
+                <th className="px-4 py-3 text-right text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">更新时间</th>
                 <th className="w-16 px-4 py-3"></th>
             </tr>
             </thead>
@@ -274,11 +274,11 @@ export default function StrategyToggle() {
                   </button>
                 </td>
                 <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
-                  <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
+                  <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
                     {item.strategy_type}
                   </span>
                 </td>
-                <td className="px-4 py-4 text-right text-xs text-gray-500 dark:text-gray-400">
+                <td className="px-4 py-4 text-right text-sm text-gray-500 dark:text-gray-400">
                   {item.updated_at
                     ? new Date(item.updated_at).toLocaleString('zh-CN', {
                       timeZone: 'UTC',

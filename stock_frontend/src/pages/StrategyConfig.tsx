@@ -135,9 +135,9 @@ export default function StrategyConfig() {
           <table className="w-full min-w-[600px] table-fixed whitespace-nowrap divide-y divide-gray-200 text-sm dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th className="w-[30%] px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">字段</th>
-                <th className="w-[25%] px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">当前值</th>
-                <th className="w-[45%] px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">操作</th>
+                <th className="w-[30%] px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">字段</th>
+                <th className="w-[25%] px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">当前值</th>
+                <th className="w-[45%] px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">操作</th>
             </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
@@ -181,14 +181,14 @@ export default function StrategyConfig() {
                         <button
                           onClick={commitEdit}
                           disabled={saving}
-                          className="inline-flex h-6 items-center justify-center rounded bg-green-600 px-2.5 text-[11px] leading-none text-white hover:bg-green-700 disabled:opacity-50"
+                          className="inline-flex h-6 items-center justify-center rounded bg-green-600 px-2.5 text-xs leading-none text-white hover:bg-green-700 disabled:opacity-50"
                         >
                           {saving ? '…' : '保存'}
                         </button>
                         <button
                           onClick={cancelEdit}
                           disabled={saving}
-                          className="inline-flex h-6 items-center justify-center rounded bg-gray-200 px-2.5 text-[11px] leading-none text-gray-700 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
+                          className="inline-flex h-6 items-center justify-center rounded bg-gray-200 px-2.5 text-xs leading-none text-gray-700 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
                         >
                           取消
                         </button>
@@ -196,7 +196,7 @@ export default function StrategyConfig() {
                     ) : (
                       <button
                         onClick={() => startEdit(item)}
-                        className="inline-flex h-6 items-center justify-center rounded bg-blue-600 px-2.5 text-[11px] leading-none text-white hover:bg-blue-700"
+                        className="inline-flex h-6 items-center justify-center rounded bg-blue-600 px-2.5 text-xs leading-none text-white hover:bg-blue-700"
                       >
                         编辑
                       </button>

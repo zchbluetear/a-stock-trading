@@ -339,41 +339,36 @@ function WatchlistItem({
       </div>
       <Link to={`/stock/${item.code}`} className="flex min-w-0 flex-1 items-center justify-between gap-1.5 sm:gap-4">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-xs font-semibold text-gray-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400 sm:text-base">
+          <div className="truncate text-sm font-semibold text-gray-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400 sm:text-lg">
             {item.name || item.code}<span className="ml-1 font-normal text-gray-500 dark:text-gray-400">({item.code})</span>
           </div>
         </div>
 
         {/* 实时行情信息 */}
         {isLoading ? (
-          <div className="shrink-0 text-[10px] text-gray-400 sm:text-sm">加载中...</div>
+          <div className="shrink-0 text-sm text-gray-400 sm:text-lg">加载中...</div>
         ) : realtimeData ? (
-          <div className="flex shrink-0 items-center gap-1.5 text-right sm:gap-4">
-            <div className={`text-sm font-bold sm:text-lg ${isUp ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+          <div className="flex shrink-0 items-center gap-3 text-right sm:gap-6">
+            <div className={`text-base font-bold sm:text-xl ${isUp ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                 {realtimeData.current_price?.toFixed(2) || '--'}
             </div>
-            <div>
-              <div className={`whitespace-nowrap text-[10px] font-semibold sm:text-sm ${isUp ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                {isUp ? '+' : ''}{changePercent.toFixed(2)}%
-              </div>
-              <div className={`whitespace-nowrap text-[9px] sm:text-xs ${isUp ? 'text-red-500 dark:text-red-500' : 'text-green-500 dark:text-green-500'}`}>
-                {isUp ? '+' : ''}{changeValue.toFixed(2)}
-              </div>
+            <div className={`whitespace-nowrap text-sm font-semibold sm:text-lg ${isUp ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+              {isUp ? '+' : ''}{changeValue.toFixed(2)}
             </div>
           </div>
         ) : (
-          <div className="shrink-0 text-xs text-gray-400 sm:text-sm">--</div>
+          <div className="shrink-0 text-sm text-gray-400 sm:text-lg">--</div>
         )}
       </Link>
 
-      <div className="flex shrink-0 items-center gap-1 sm:ml-1 sm:gap-2">
-        <AIAnalyzeButton code={item.code} className="!gap-1 !px-1.5 !py-1 !text-[10px] sm:!gap-2 sm:!px-3 sm:!py-1.5 sm:!text-sm" />
+      <div className="flex shrink-0 items-center gap-2 sm:ml-1 sm:gap-3">
+        <AIAnalyzeButton code={item.code} className="!gap-1 !px-2 !py-1.5 !text-xs sm:!gap-2 sm:!px-4 sm:!py-2 sm:text-base" />
         <button
           onClick={(e) => {
             e.preventDefault();
             onRemove();
           }}
-          className="rounded-lg px-1.5 py-1 text-[10px] text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-900/20 sm:px-4 sm:py-2 sm:text-sm"
+          className="rounded-lg px-2 py-1.5 text-xs text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-900/20 sm:px-4 sm:py-2 sm:text-base"
         >
           删除
         </button>

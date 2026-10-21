@@ -157,18 +157,18 @@ export default function Strategy() {
       {/* 筛选结果标题和刷新按钮 - 始终显示 */}
       <div className="mb-4 w-full min-w-0">
         <div className="flex w-full min-w-0 flex-nowrap items-center justify-between gap-1 sm:gap-3">
-        <h2 className="min-w-0 shrink-0 whitespace-nowrap text-xs font-semibold text-gray-900 dark:text-white sm:text-xl">
+        <h2 className="min-w-0 shrink-0 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white sm:text-xl">
           <span>2连板分歧</span>
-          {data && <span className="ml-1 text-[10px] font-normal text-gray-500 dark:text-gray-400 sm:ml-2 sm:text-sm">共{data.count}只</span>}
+          {data && <span className="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400 sm:ml-2 sm:text-sm">共{data.count}只</span>}
         </h2>
         <div className="flex min-w-0 shrink-0 flex-nowrap items-center gap-1 sm:gap-3">
-          <label className="flex shrink-0 items-center gap-1 text-[11px] text-gray-600 dark:text-gray-300 sm:gap-2 sm:text-sm">
+          <label className="flex shrink-0 items-center gap-1 text-sm text-gray-600 dark:text-gray-300 sm:gap-2">
             <span className="sm:hidden">截止</span>
             <span className="hidden sm:inline">涨停截止时间</span>
             <select
               value={limitTime}
               onChange={(e) => setLimitTime(e.target.value)}
-              className="w-[76px] rounded-lg border border-gray-300 bg-white px-1 py-1.5 text-[11px] text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white sm:w-auto sm:px-3 sm:py-2 sm:text-sm"
+              className="w-[76px] rounded-lg border border-gray-300 bg-white px-1 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white sm:w-auto sm:px-3 sm:py-2"
             >
               {TIME_OPTIONS.map((time) => (
                 <option key={time} value={time}>{time}</option>
@@ -186,7 +186,7 @@ export default function Strategy() {
           <button
             onClick={() => refetch()}
             disabled={isFetching}
-            className="flex shrink-0 items-center gap-1 rounded-lg bg-blue-600 px-1.5 py-1.5 text-[11px] text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
+            className="flex shrink-0 items-center gap-1 rounded-lg bg-blue-600 px-2 py-1.5 text-sm text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:gap-2 sm:px-4 sm:py-2"
           >
             <svg className={`h-4 w-4 sm:h-5 sm:w-5 ${isFetching ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
