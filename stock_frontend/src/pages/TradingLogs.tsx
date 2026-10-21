@@ -347,22 +347,25 @@ export default function TradingLogs() {
 
       {/* 工具栏 */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-        <div className="relative min-w-0 flex-1 sm:w-48 sm:flex-none">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-          </svg>
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="搜索代码 / 名称"
-            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+        {/* 第一组：搜索框 + 状态筛选（手机端同行） */}
+        <div className="flex gap-2 flex-1 sm:flex-none">
+          <div className="relative min-w-0 flex-1 sm:w-48">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+            </svg>
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="搜索代码 / 名称"
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+          </div>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+            className="py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none whitespace-nowrap">
+            <option value="">全部</option>
+            <option value="open">持仓中</option>
+            <option value="closed">已清仓</option>
+          </select>
         </div>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
-          <option value="">全部</option>
-          <option value="open">持仓中</option>
-          <option value="closed">已清仓</option>
-        </select>
 
-        {/* 日期筛选 */}
+        {/* 第二组：日期筛选 + 快捷按钮 */}
         <div className="flex items-center gap-1">
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
             className="py-2 px-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
@@ -401,17 +404,68 @@ export default function TradingLogs() {
           </svg>
           刷新
         </button>
-        <button onClick={() => { setIsAdding(!isAdding); setDetailId(null); setBuyForm(defaultBuyForm); }}
-          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-blue-600 px-2 py-2 text-sm text-white hover:bg-blue-700 sm:gap-1.5 sm:px-3">
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          新增买入
-        </button>
-        <button onClick={() => setShowTagManager(!showTagManager)}
-          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-purple-600 px-2 py-2 text-sm text-white hover:bg-purple-700 sm:px-3">
-          标签管理
-        </button>
+        {/* 桌面端：新增买入 + 标签管理同行 */}
+        <div className="hidden sm:flex gap-2">
+          <button onClick={() => { setIsAdding(!isAdding); setDetailId(null); setBuyForm(defaultBuyForm); }}
+            className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-blue-600 px-2 py-2 text-sm text-white hover:bg-blue-700 sm:gap-1.5 sm:px-3">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            新增买入
+          </button>
+          <button onClick={() => setShowTagManager(!showTagManager)}
+            className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-purple-600 px-2 py-2 text-sm text-white hover:bg-purple-700 sm:px-3">
+            标签管理
+          </button>
+        </div>
+        {/* 手机端：垂直排列 */}
+        <div className="sm:hidden flex gap-2 flex-1">
+          <button onClick={() => { setIsAdding(!isAdding); setDetailId(null); setBuyForm(defaultBuyForm); }}
+            className="flex-1 inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-blue-600 px-2 py-2 text-sm text-white hover:bg-blue-700">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            新增买入
+          </button>
+          <button onClick={() => setShowTagManager(!showTagManager)}
+            className="flex-1 inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-purple-600 px-2 py-2 text-sm text-white hover:bg-purple-700">
+            标签管理
+          </button>
+        </div>
+        {/* 手机端分页控件（标签管理后面） */}
+        {total > 0 && (
+          <div className="sm:hidden flex items-center justify-between gap-2">
+            <select
+              value={perPage}
+              onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
+              className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value={5}>5条/页</option>
+              <option value={10}>10条/页</option>
+              <option value={20}>20条/页</option>
+            </select>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+              >
+                ◀
+              </button>
+              <span className="px-2 py-1 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                {page}/{Math.ceil(total / perPage)}
+              </span>
+              <button
+                onClick={() => setPage(p => Math.min(Math.ceil(total / perPage), p + 1))}
+                disabled={page >= Math.ceil(total / perPage)}
+                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+              >
+                ▶
+              </button>
+              <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">共{total}条</span>
+            </div>
+          </div>
+        )}
         <span className="hidden whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 sm:inline">共 {total} 条</span>
       </div>
 
@@ -449,7 +503,7 @@ export default function TradingLogs() {
       {isAdding && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-blue-100 dark:border-blue-900">
           <h3 className="font-medium text-gray-900 dark:text-white mb-3">新增买入记录</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">股票代码*</label>
               <input type="text" value={buyForm.code} onChange={e => setBuyForm({ ...buyForm, code: e.target.value })}
@@ -465,7 +519,8 @@ export default function TradingLogs() {
             <div>
               <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">买入时间*</label>
               <input type="datetime-local" value={buyForm.buy_time} onChange={e => setBuyForm({ ...buyForm, buy_time: e.target.value })}
-                className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white dark:bg-gray-700 dark:text-white" />
+                className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white dark:bg-gray-700 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                style={{ font: 'inherit' }} />
             </div>
             <div>
               <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">买入价格*</label>
@@ -592,7 +647,7 @@ export default function TradingLogs() {
                 <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   {actionForm.action_type === 'buy' ? '追加买入' : '追加卖出'}
                 </p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
                     <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">时间*</label>
                     <input type="datetime-local" value={actionForm.action_time}
@@ -636,26 +691,41 @@ export default function TradingLogs() {
               {detailActions.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-4">暂无操作记录</p>
               ) : detailActions.map(action => (
-                <div key={action.id} className="flex items-center gap-3 p-2 rounded bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700">
-                  <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-bold ${
-                    action.action_type === 'buy'
-                      ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                      : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                  }`}>
-                    {action.action_type === 'buy' ? '买入' : '卖出'}
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 w-32">{formatTime(action.action_time)}</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">{fmtNum(action.price)} × {action.quantity}股</span>
-                  <span className="text-xs text-yellow-600 dark:text-yellow-400">费{fmtNum(action.fee)}</span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 truncate flex-1" title={action.logic || ''}>
-                    {action.logic || ''}
-                  </span>
-                  <button onClick={() => handleDeleteAction(action.id)}
-                    className="text-gray-300 hover:text-red-500 transition-colors shrink-0" title="删除">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                <div key={action.id} className="p-3 rounded bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 space-y-2">
+                  {/* 第一行：操作类型 + 时间 */}
+                  <div className="flex items-center gap-2">
+                    <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-bold ${
+                      action.action_type === 'buy'
+                        ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                        : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                    }`}>
+                      {action.action_type === 'buy' ? '买入' : '卖出'}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{formatTime(action.action_time)}</span>
+                  </div>
+                  
+                  {/* 第二行：价格数量 + 手续费 */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{fmtNum(action.price)} × {action.quantity}股</span>
+                    <span className="text-xs text-yellow-600 dark:text-yellow-400">费{fmtNum(action.fee)}</span>
+                  </div>
+                  
+                  {/* 第三行：买卖逻辑（仅在有内容时显示） */}
+                  {action.logic && (
+                    <div className="text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
+                      {action.logic}
+                    </div>
+                  )}
+                  
+                  {/* 第四行：删除按钮 */}
+                  <div className="flex justify-end">
+                    <button onClick={() => handleDeleteAction(action.id)}
+                      className="text-gray-300 hover:text-red-500 transition-colors" title="删除">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -778,9 +848,9 @@ export default function TradingLogs() {
           </table>
         </div>
 
-        {/* 分页控件 */}
+        {/* 分页控件（仅桌面端） */}
         {total > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+          <div className="hidden sm:flex items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
             <div className="text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
               共 <span className="font-semibold">{total}</span> 条记录
             </div>
