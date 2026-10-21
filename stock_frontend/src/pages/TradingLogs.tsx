@@ -493,7 +493,7 @@ export default function TradingLogs() {
             <div>
               <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">买入时间*</label>
               <input type="datetime-local" value={buyForm.buy_time} onChange={e => setBuyForm({ ...buyForm, buy_time: e.target.value })}
-                className="w-[60%] sm:w-full min-w-0 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white dark:bg-gray-700 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-datetime-edit]:p-0 [&::-webkit-datetime-edit-fields-wrapper]:p-0"
+                className="w-[85%] sm:w-full min-w-0 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white dark:bg-gray-700 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-datetime-edit]:p-0 [&::-webkit-datetime-edit-fields-wrapper]:p-0"
                 style={{ font: 'inherit' }} />
             </div>
             <div>
@@ -628,7 +628,7 @@ export default function TradingLogs() {
                     <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">时间*</label>
                     <input type="datetime-local" value={actionForm.action_time}
                       onChange={e => setActionForm({ ...actionForm, action_time: e.target.value })}
-                      className="w-[60%] sm:w-full min-w-0 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-datetime-edit]:p-0 [&::-webkit-datetime-edit-fields-wrapper]:p-0"
+                      className="w-[85%] sm:w-full min-w-0 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-datetime-edit]:p-0 [&::-webkit-datetime-edit-fields-wrapper]:p-0"
                       style={{ font: 'inherit' }} />
                   </div>
                   <div>
