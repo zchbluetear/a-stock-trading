@@ -16,6 +16,7 @@ from data_fetchers import get_realtime_data, get_timeline_data, get_minute_kline
 from technical_indicators import get_comprehensive_data, get_comprehensive_data_with_indicators, calculate_market_sentiment, get_latest_sentiment_summary
 from data_formatters import format_for_ai, to_json
 import requests
+import os
 from datetime import date, timedelta
 from models import get_db, SessionLocal
 import models
@@ -2308,6 +2309,194 @@ def register_routes(app):
             import traceback
             print(f"[API] 错误堆栈: {traceback.format_exc()}")
             return jsonify({'error': '筛选强势股失败', 'message': error_msg}), 500
+
+    @app.route('/api/strategy/nine_turn')
+    def get_nine_turn_stocks():
+        """9转策略选股（TD Sequential）- 扫描全市场寻找9转信号股票"""
+        try:
+            print("[API] 开始9转策略扫描...")
+
+            # 1. 通过新浪API获取沪深主板行情快照
+            SINA_HEADERS = {'User-Agent': 'Mozilla/5.0', 'Referer': 'http://finance.sina.com.cn'}
+            SINA_NODE_URL = 'http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData'
+
+            def _fetch_sina_page(node, page):
+                """获取新浪行情分页数据"""
+                resp = requests.get(SINA_NODE_URL, params={
+                    'page': page, 'num': 80, 'sort': 'symbol', 'asc': 1,
+                    'node': node, 'symbol': '', '_s_r_a': 'initlen',
+                }, headers=SINA_HEADERS, timeout=10)
+                resp.raise_for_status()
+                return resp.json() if resp.text.strip() else []
+
+            # 并行获取沪市(sh_a)和深市(sz_a)所有分页
+            all_rows = []
+            for node in ['sh_a', 'sz_a']:
+                first = _fetch_sina_page(node, 1)
+                if not first:
+                    continue
+                all_rows.extend(first)
+                # 估算总页数（每顂80条）
+                import math
+                est_pages = max(1, math.ceil(len(first) * 30 / 80))  # 粗略估算
+                if len(first) >= 80:
+                    # 继续获取剩余分页
+                    for p in range(2, min(est_pages + 5, 60)):  # 最多60页
+                        try:
+                            page_data = _fetch_sina_page(node, p)
+                            if not page_data:
+                                break
+                            all_rows.extend(page_data)
+                            if len(page_data) < 80:
+                                break
+                        except Exception:
+                            break
+
+            print(f"[API] 获取到沪深行情: {len(all_rows)} 只")
+
+            # 2. 构建候选池
+            candidates = []
+            for row in all_rows:
+                code = str(row.get('code', '')).strip().zfill(6)
+                name = str(row.get('name', '')).strip()
+                symbol = str(row.get('symbol', '')).strip()
+
+                # 只保留沪深主板（60/00开头），排除创业板(30)、科创板(68)、北交所(bj)
+                if not (code.startswith('60') or code.startswith('00')):
+                    continue
+                # 过滤ST、退市
+                if 'ST' in name.upper() or '退' in name:
+                    continue
+
+                price = None
+                try:
+                    price = float(row.get('trade', 0))
+                except:
+                    continue
+                if price < 2 or price > 200:
+                    continue
+
+                change_pct = None
+                try:
+                    change_pct = float(row.get('changepercent', 0))
+                except:
+                    pass
+
+                candidates.append({
+                    'code': code,
+                    'name': name,
+                    'current_price': price,
+                    'change_percent': change_pct,
+                    'industry': '',
+                })
+
+            print(f"[API] 候选股票池: {len(candidates)} 只")
+
+            # 2. TD Sequential 计算函数
+            def calc_td_count(closes):
+                """计算TD序列计数，返回 (count, direction)
+                direction: 'buy' = 连续下跌(买入信号), 'sell' = 连续上涨(卖出信号)
+                """
+                if len(closes) < 5:
+                    return 0, None
+
+                buy_count = 0
+                sell_count = 0
+                max_buy = 0
+                max_sell = 0
+                latest_buy = 0
+                latest_sell = 0
+
+                for i in range(4, len(closes)):
+                    if closes[i] < closes[i - 4]:
+                        buy_count += 1
+                        sell_count = 0
+                    elif closes[i] > closes[i - 4]:
+                        sell_count += 1
+                        buy_count = 0
+                    else:
+                        buy_count = 0
+                        sell_count = 0
+
+                    # TD Sequential 标准逻辑：计数到9后重置（通达信/同花顺）
+                    if buy_count > 9:
+                        buy_count = 1  # 完成9转后重新开始计数
+                    if sell_count > 9:
+                        sell_count = 1  # 完成9转后重新开始计数
+
+                    if buy_count > max_buy:
+                        max_buy = buy_count
+                    if sell_count > max_sell:
+                        max_sell = sell_count
+                    latest_buy = buy_count
+                    latest_sell = sell_count
+
+                # 取当前正在进行的序列计数
+                if latest_buy >= latest_sell and latest_buy > 0:
+                    return latest_buy, 'buy'
+                elif latest_sell > 0:
+                    return latest_sell, 'sell'
+                return 0, None
+
+            # 3. 并行扫描
+            results = []
+            results_lock = threading.Lock()
+
+            def scan_one(stock_info):
+                code = stock_info['code']
+                try:
+                    df = get_daily_kline(code, count=30)
+                    if df is None or len(df) < 13:
+                        return None
+
+                    closes = df['close'].tolist()
+                    count, direction = calc_td_count(closes)
+
+                    # 只保留 TD=9（刚完成9转信号）
+                    if count == 9 and direction:
+                        return {
+                            'code': stock_info['code'],
+                            'name': stock_info['name'],
+                            'current_price': stock_info['current_price'],
+                            'change_percent': stock_info['change_percent'],
+                            'industry': stock_info['industry'],
+                            'td_count': count,
+                            'direction': direction,
+                            'direction_label': '低9（买入信号）' if direction == 'buy' else '高9（卖出信号）',
+                        }
+                except Exception as e:
+                    pass
+                return None
+
+            with ThreadPoolExecutor(max_workers=20) as executor:
+                futures = {executor.submit(scan_one, s): s for s in candidates}
+                for future in as_completed(futures):
+                    try:
+                        result = future.result()
+                        if result:
+                            results.append(result)
+                    except Exception:
+                        pass
+
+            # 按信号方向排序（卖出优先），再按涨幅降序，最后按 code
+            results.sort(key=lambda x: (0 if x['direction'] == 'sell' else 1, -(x['change_percent'] or 0), x['code']))
+
+            print(f"[API] 9转扫描完成，候选{len(candidates)}只，命中{len(results)}只")
+
+            return jsonify({
+                'strategy': 'nine_turn',
+                'description': 'TD Sequential 9转信号（仅显示TD=9的完成信号股票）',
+                'params': {'filter': 'TD=9'},
+                'count': len(results),
+                'scanned': len(candidates),
+                'stocks': results,
+            })
+
+        except Exception as e:
+            import traceback
+            print(f"[API] 9转策略扫描失败: {e}")
+            print(f"[API] 错误堆栈: {traceback.format_exc()}")
+            return jsonify({'error': '9转策略扫描失败', 'message': str(e)}), 500
 
     @app.route('/api/auction/sectors')
     def get_auction_sectors():

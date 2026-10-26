@@ -443,6 +443,10 @@ class StockAPI {
     return this.request(`/api/strategy/strong_stocks?limit_time=${encodeURIComponent(limitTime)}`);
   }
 
+  async getNineTurnStocks(): Promise<any> {
+    return this.request(`/api/strategy/nine_turn`);
+  }
+
   async stopDebateJob(jobId: string): Promise<boolean> {
     const data = await this.request<{ success: boolean }>(`/api/ai/debate/stop/${jobId}`, {
       method: 'POST',
