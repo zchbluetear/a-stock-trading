@@ -46,56 +46,49 @@ def start_monitor_service():
 
 def start_scheduler_service():
     """
-    启动定时任务服务（参考 start_monitor 的守护线程+轮询实现，无需额外依赖）
-    功能：每个交易日 09:45 自动触发自选股成交量预测计算
+    启动定时任务服务
+    功能：交易时段每5分钟扫描自选股分时分9转信号并推送PushPlus
     """
     try:
         import threading
         import time
         from datetime import datetime
-        from api_routes import run_watchlist_volume_prediction_task
+        from api_routes import run_intraday_nine_turn_push_task
 
         import os
         if os.environ.get('WERKZEUG_RUN_MAIN') != 'true' and app.debug:
-            # 不是 werkzeug 的真正 worker 进程，跳过
             return
 
-        # 记录今天是否已经执行过，避免在 09:45 这一分钟内因为轮询间隔小而重复执行
-        state = {'last_run_date': None}
+        state = {'last_nine_turn_time': None}
 
         def _scheduler_loop():
-            print("[Scheduler] 守护线程定时服务已启动：每日 09:45 自动计算自选股成交量预测")
+            print("[Scheduler] 守护线程定时服务已启动：交易时段每5分钟分时9转推送")
             while True:
                 try:
                     now = datetime.now()
-                    today_str = now.strftime('%Y-%m-%d')
-
-                    # 跨天重置执行标记
-                    if state['last_run_date'] == today_str:
-                        # 今天已经执行过，直接 sleep
-                        time.sleep(30)
-                        continue
-
                     weekday = now.weekday()
                     current_hm = (now.hour, now.minute)
-                    # 只在工作日执行，且时间窗口锁定为 09:45 ~ 09:46（给一分钟容错窗口）
-                    if weekday < 5 and current_hm >= (9, 45) and current_hm <= (9, 46):
-                        print(f"[Scheduler] 到达 09:45，开始执行自选股成交量预测任务 [{today_str}]")
-                        try:
-                            run_watchlist_volume_prediction_task()
-                        except Exception as e:
-                            print(f"[Scheduler] 任务执行异常: {e}")
-                            import traceback
-                            traceback.print_exc()
-                        # 标记今日已执行
-                        state['last_run_date'] = today_str
-                        print(f"[Scheduler] {today_str} 成交量预测任务执行完成")
+
+                    # 交易时段每5分钟扫描分时分9转信号（与5分钟K线周期对齐）
+                    in_trading = weekday < 5 and (
+                        ((9, 30) <= current_hm <= (11, 30)) or
+                        ((13, 0) <= current_hm <= (15, 0))
+                    )
+                    if in_trading:
+                        last_run = state['last_nine_turn_time']
+                        elapsed = (now - last_run).total_seconds() if last_run else 999
+                        if elapsed >= 300:  # 每5分钟执行一次
+                            try:
+                                run_intraday_nine_turn_push_task()
+                            except Exception as e:
+                                print(f"[Scheduler] 分时9转推送任务执行异常: {e}")
+                            state['last_nine_turn_time'] = now
+
                 except Exception as e:
                     print(f"[Scheduler] 定时循环异常: {e}")
-                # 每 30 秒轮询一次，足够捕捉 09:45 的时间窗口
-                time.sleep(30)
+                time.sleep(15)
 
-        t = threading.Thread(target=_scheduler_loop, name="WatchlistVolumeScheduler", daemon=True)
+        t = threading.Thread(target=_scheduler_loop, name="WatchlistScheduler", daemon=True)
         t.start()
     except Exception as e:
         print(f"[Scheduler] 定时服务启动失败: {e}")

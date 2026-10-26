@@ -144,6 +144,155 @@ def run_single_stock_volume_prediction_task(code: str):
         db.close()
 
 
+# ==================== 分时9转信号推送任务 ====================
+
+# 上一次扫描的信号集合（用于判断信号是否消失后重新出现）
+_last_scan_signal_keys = set()
+
+def _calc_td_count(closes):
+    """TD Sequential 计算，返回 (count, direction)"""
+    if len(closes) < 5:
+        return 0, None
+    buy_count = 0
+    sell_count = 0
+    for i in range(4, len(closes)):
+        if closes[i] < closes[i - 4]:
+            buy_count += 1
+            sell_count = 0
+        elif closes[i] > closes[i - 4]:
+            sell_count += 1
+            buy_count = 0
+        else:
+            buy_count = 0
+            sell_count = 0
+        if buy_count > 9:
+            buy_count = 1
+        if sell_count > 9:
+            sell_count = 1
+    if buy_count >= sell_count and buy_count > 0:
+        return buy_count, 'buy'
+    elif sell_count > 0:
+        return sell_count, 'sell'
+    return 0, None
+
+def scan_intraday_nine_turn():
+    """扫描自选股5分钟K线的分时分9转信号，返回命中列表"""
+    db = SessionLocal()
+    try:
+        watchlist = get_watchlist(db)
+    finally:
+        db.close()
+
+    if not watchlist:
+        return []
+
+    stocks_info = [{'code': item.code, 'name': item.name or item.code} for item in watchlist]
+
+    def _scan_one(stock_info):
+        code = stock_info['code']
+        try:
+            df = get_minute_kline(code, scale=5, datalen=240)
+            if df is None or len(df) < 13:
+                return None
+            closes = df['close'].tolist()
+            count, direction = _calc_td_count(closes)
+            if count == 9 and direction:
+                last_row = df.iloc[-1]
+                prev_close = df.iloc[-2]['close'] if len(df) >= 2 else last_row['close']
+                current_price = float(last_row['close'])
+                change_pct = None
+                if prev_close and prev_close > 0:
+                    change_pct = round((current_price - float(prev_close)) / float(prev_close) * 100, 2)
+                return {
+                    'code': stock_info['code'],
+                    'name': stock_info['name'],
+                    'current_price': current_price,
+                    'change_percent': change_pct,
+                    'td_count': count,
+                    'direction': direction,
+                    'direction_label': '低9（买入信号）' if direction == 'buy' else '高9（卖出信号）',
+                }
+        except Exception:
+            pass
+        return None
+
+    results = []
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(_scan_one, s) for s in stocks_info]
+        for f in as_completed(futures):
+            try:
+                r = f.result(timeout=30)
+                if r:
+                    results.append(r)
+            except Exception:
+                pass
+
+    results.sort(key=lambda x: (0 if x['direction'] == 'sell' else 1, -(x['change_percent'] or 0), x['code']))
+    return results
+
+def run_intraday_nine_turn_push_task():
+    """定时扫描自选股分时9转信号，发现新信号时推送PushPlus
+    规则：信号消失后再次出现时重新推送，连续存在不重复推"""
+    global _last_scan_signal_keys
+
+    try:
+        signals = scan_intraday_nine_turn()
+        current_keys = set()
+
+        if signals:
+            for s in signals:
+                current_keys.add(f"{s['code']}_{s['direction']}")
+
+        # 新信号 = 本次存在但上次不存在的
+        new_signals = []
+        if signals:
+            for s in signals:
+                key = f"{s['code']}_{s['direction']}"
+                if key not in _last_scan_signal_keys:
+                    new_signals.append(s)
+
+        # 更新上次扫描记录
+        _last_scan_signal_keys = current_keys
+
+        if not new_signals:
+            return
+
+        # 每只股票单独推送一条消息
+        now_str = datetime.now().strftime('%H:%M:%S')
+
+        from notification import send_wechat_notification
+
+        success_count = 0
+        fail_count = 0
+        for s in new_signals:
+            is_buy = s['direction'] == 'buy'
+            emoji = '🟢' if is_buy else '🔴'
+            label = '低9买入' if is_buy else '高9卖出'
+            pct = f"{s['change_percent']:+.2f}%" if s['change_percent'] is not None else '-'
+
+            title = f"{emoji} {s['name']} {label}信号"
+            lines = [f'<h3>{emoji} {s["name"]}（{s["code"]}）{label}信号</h3>']
+            lines.append(f'<p><b>当前价：</b>¥{s["current_price"]:.2f}</p>')
+            lines.append(f'<p><b>涨幅：</b>{pct}</p>')
+            lines.append(f'<p><b>时间：</b>{now_str}</p>')
+            content = '\n'.join(lines)
+
+            res = send_wechat_notification(title, content, template='html')
+            if res.get('success'):
+                success_count += 1
+                print(f"[Scheduler] 推送成功: {s['name']} {label}")
+            else:
+                fail_count += 1
+                print(f"[Scheduler] 推送失败: {s['name']} - {res.get('message')}")
+
+        print(f"[Scheduler] 分时9转推送完成: 成功{success_count}只, 失败{fail_count}只")
+
+    except Exception as e:
+        print(f"[Scheduler] 分时9转推送任务异常: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 def register_routes(app):
     """注册所有API路由"""
     from sector_research import register_sector_routes
@@ -2497,6 +2646,25 @@ def register_routes(app):
             print(f"[API] 9转策略扫描失败: {e}")
             print(f"[API] 错误堆栈: {traceback.format_exc()}")
             return jsonify({'error': '9转策略扫描失败', 'message': str(e)}), 500
+
+    @app.route('/api/strategy/intraday_nine_turn')
+    def get_intraday_nine_turn():
+        """分时9序列策略 - 扫描自选股5分钟K线寻找9转信号（同花顺逻辑）"""
+        try:
+            print("[API] 开始分时9序列扫描...")
+            results = scan_intraday_nine_turn()
+            print(f"[API] 分时9序列扫描完成，命中{len(results)}只")
+            return jsonify({
+                'strategy': 'intraday_nine_turn',
+                'description': '分时9序列（5分钟K线 TD Sequential，自选股）',
+                'count': len(results),
+                'stocks': results,
+            })
+        except Exception as e:
+            import traceback
+            print(f"[API] 分时9序列扫描失败: {e}")
+            print(f"[API] 错误堆栈: {traceback.format_exc()}")
+            return jsonify({'error': '分时9序列扫描失败', 'message': str(e)}), 500
 
     @app.route('/api/auction/sectors')
     def get_auction_sectors():
