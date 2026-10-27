@@ -176,7 +176,7 @@ def _calc_td_count(closes):
     return 0, None
 
 def scan_intraday_nine_turn():
-    """扫描自选股5分钟K线的分时分9转信号，返回命中列表"""
+    """扫描自选股1分钟K线的分时9转信号，返回命中列表"""
     db = SessionLocal()
     try:
         watchlist = get_watchlist(db)
@@ -191,7 +191,7 @@ def scan_intraday_nine_turn():
     def _scan_one(stock_info):
         code = stock_info['code']
         try:
-            df = get_minute_kline(code, scale=5, datalen=240)
+            df = get_minute_kline(code, scale=1, datalen=240)
             if df is None or len(df) < 13:
                 return None
             closes = df['close'].tolist()
@@ -2649,14 +2649,14 @@ def register_routes(app):
 
     @app.route('/api/strategy/intraday_nine_turn')
     def get_intraday_nine_turn():
-        """分时9序列策略 - 扫描自选股5分钟K线寻找9转信号（同花顺逻辑）"""
+        """分时9序列策略 - 扫描自选股1分钟K线寻找9转信号（同花顺逻辑）"""
         try:
             print("[API] 开始分时9序列扫描...")
             results = scan_intraday_nine_turn()
             print(f"[API] 分时9序列扫描完成，命中{len(results)}只")
             return jsonify({
                 'strategy': 'intraday_nine_turn',
-                'description': '分时9序列（5分钟K线 TD Sequential，自选股）',
+                'description': '分时9序列（1分钟K线 TD Sequential，自选股）',
                 'count': len(results),
                 'stocks': results,
             })
