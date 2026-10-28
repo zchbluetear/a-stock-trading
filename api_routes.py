@@ -147,7 +147,7 @@ def run_single_stock_volume_prediction_task(code: str):
 # ==================== 分时9转信号推送任务 ====================
 
 # 上一次扫描的信号集合（用于判断信号是否消失后重新出现）
-_last_scan_signal_keys = set()
+_sent_intraday_nine_turn_keys = set()
 
 def _calc_td_count(closes):
     """TD Sequential 计算，返回 (count, direction)"""
@@ -195,23 +195,39 @@ def scan_intraday_nine_turn():
             if df is None or len(df) < 13:
                 return None
             closes = df['close'].tolist()
-            count, direction = _calc_td_count(closes)
-            if count == 9 and direction:
-                last_row = df.iloc[-1]
-                prev_close = df.iloc[-2]['close'] if len(df) >= 2 else last_row['close']
-                current_price = float(last_row['close'])
+            # 回看最近5根1分钟K线，避免新分钟K线到来后漏掉上一根上的9转。
+            start_idx = max(4, len(df) - 5)
+            signals = []
+            for idx in range(start_idx, len(df)):
+                count, direction = _calc_td_count(closes[:idx + 1])
+                if count != 9 or not direction:
+                    continue
+
+                row = df.iloc[idx]
+                signal_dt = row.get('datetime')
+                if hasattr(signal_dt, 'strftime'):
+                    signal_time = signal_dt.strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    signal_time = str(signal_dt)
+                if not signal_time or signal_time in ('NaT', 'nan', 'None'):
+                    continue
+
+                prev_close = df.iloc[idx - 1]['close'] if idx >= 1 else row['close']
+                current_price = float(row['close'])
                 change_pct = None
                 if prev_close and prev_close > 0:
                     change_pct = round((current_price - float(prev_close)) / float(prev_close) * 100, 2)
-                return {
+                signals.append({
                     'code': stock_info['code'],
                     'name': stock_info['name'],
                     'current_price': current_price,
                     'change_percent': change_pct,
                     'td_count': count,
                     'direction': direction,
+                    'signal_time': signal_time,
                     'direction_label': '低9（买入信号）' if direction == 'buy' else '高9（卖出信号）',
-                }
+                })
+            return signals
         except Exception:
             pass
         return None
@@ -223,7 +239,7 @@ def scan_intraday_nine_turn():
             try:
                 r = f.result(timeout=30)
                 if r:
-                    results.append(r)
+                    results.extend(r)
             except Exception:
                 pass
 
@@ -232,27 +248,15 @@ def scan_intraday_nine_turn():
 
 def run_intraday_nine_turn_push_task():
     """定时扫描自选股分时9转信号，发现新信号时推送PushPlus
-    规则：信号消失后再次出现时重新推送，连续存在不重复推"""
-    global _last_scan_signal_keys
+    只处理分钟K线；同一股票、方向和信号K线时间只推送一次。"""
+    global _sent_intraday_nine_turn_keys
 
     try:
         signals = scan_intraday_nine_turn()
-        current_keys = set()
-
-        if signals:
-            for s in signals:
-                current_keys.add(f"{s['code']}_{s['direction']}")
-
-        # 新信号 = 本次存在但上次不存在的
-        new_signals = []
-        if signals:
-            for s in signals:
-                key = f"{s['code']}_{s['direction']}"
-                if key not in _last_scan_signal_keys:
-                    new_signals.append(s)
-
-        # 更新上次扫描记录
-        _last_scan_signal_keys = current_keys
+        new_signals = [
+            s for s in signals
+            if f"{s['code']}_{s['direction']}_{s['signal_time']}" not in _sent_intraday_nine_turn_keys
+        ]
 
         if not new_signals:
             return
@@ -274,11 +278,13 @@ def run_intraday_nine_turn_push_task():
             lines = [f'<h3>{emoji} {s["name"]}（{s["code"]}）{label}信号</h3>']
             lines.append(f'<p><b>当前价：</b>¥{s["current_price"]:.2f}</p>')
             lines.append(f'<p><b>涨幅：</b>{pct}</p>')
-            lines.append(f'<p><b>时间：</b>{now_str}</p>')
+            lines.append(f'<p><b>信号K线：</b>{s["signal_time"]}</p>')
+            lines.append(f'<p><b>推送时间：</b>{now_str}</p>')
             content = '\n'.join(lines)
 
             res = send_wechat_notification(title, content, template='html')
             if res.get('success'):
+                _sent_intraday_nine_turn_keys.add(f"{s['code']}_{s['direction']}_{s['signal_time']}")
                 success_count += 1
                 print(f"[Scheduler] 推送成功: {s['name']} {label}")
             else:

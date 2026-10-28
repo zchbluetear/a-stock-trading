@@ -47,7 +47,7 @@ def start_monitor_service():
 def start_scheduler_service():
     """
     启动定时任务服务
-    功能：交易时段每分钟扫描自选股1分钟分时9转信号并推送PushPlus
+    功能：交易时段每15秒扫描自选股1分钟分时9转信号并推送PushPlus
     """
     try:
         import threading
@@ -62,14 +62,14 @@ def start_scheduler_service():
         state = {'last_nine_turn_time': None}
 
         def _scheduler_loop():
-            print("[Scheduler] 守护线程定时服务已启动：交易时段每分钟分时9转推送")
+            print("[Scheduler] 守护线程定时服务已启动：交易时段每15秒分时9转推送")
             while True:
                 try:
                     now = datetime.now()
                     weekday = now.weekday()
                     current_hm = (now.hour, now.minute)
 
-                    # 交易时段每分钟扫描1分钟K线分时9转信号
+                    # 交易时段每15秒扫描1分钟K线分时9转信号
                     in_trading = weekday < 5 and (
                         ((9, 30) <= current_hm <= (11, 30)) or
                         ((13, 0) <= current_hm <= (15, 0))
@@ -77,16 +77,16 @@ def start_scheduler_service():
                     if in_trading:
                         last_run = state['last_nine_turn_time']
                         elapsed = (now - last_run).total_seconds() if last_run else 999
-                        if elapsed >= 60:  # 每分钟执行一次
+                        if elapsed >= 15:  # 每15秒执行一次
                             try:
                                 run_intraday_nine_turn_push_task()
                             except Exception as e:
                                 print(f"[Scheduler] 分时9转推送任务执行异常: {e}")
-                            state['last_nine_turn_time'] = now
+                            state['last_nine_turn_time'] = datetime.now()
 
                 except Exception as e:
                     print(f"[Scheduler] 定时循环异常: {e}")
-                time.sleep(15)
+                time.sleep(1)
 
         t = threading.Thread(target=_scheduler_loop, name="WatchlistScheduler", daemon=True)
         t.start()
