@@ -91,7 +91,11 @@ def get_minute_kline(code, scale=5, datalen=240):
     """获取分钟K线数据"""
     try:
         sina_code = get_stock_code_format(code)
-        url = f"http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData"
+        # 新浪旧版 money.finance 接口返回 scale=1 时为 null；1分钟线改用新版 quotes.sina.cn JSONP 接口。
+        if scale == 1:
+            url = "https://quotes.sina.cn/cn/api/jsonp_v2.php/var=/CN_MarketDataService.getKLineData"
+        else:
+            url = "http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData"
         params = {
             'symbol': sina_code,
             'scale': scale,
@@ -101,11 +105,15 @@ def get_minute_kline(code, scale=5, datalen=240):
         
         response = requests.get(url, params=params, timeout=10, headers={
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Referer': 'http://finance.sina.com.cn'
+            'Referer': 'https://finance.sina.com.cn'
         })
         
         if response.status_code == 200:
-            data = response.json()
+            if scale == 1:
+                match = re.search(r'\bvar\s*=\s*\(?\s*(\[[\s\S]*\])\s*\)?\s*;?\s*$', response.text)
+                data = json.loads(match.group(1)) if match else None
+            else:
+                data = response.json()
             if data and isinstance(data, list) and len(data) > 0:
                 df = pd.DataFrame(data)
                 if 'day' in df.columns:
@@ -1574,4 +1582,3 @@ def get_guba_posts(code, latest_count=10, hot_count=10):
 
 
 # ==================== 技术指标计算函数 ====================
-
