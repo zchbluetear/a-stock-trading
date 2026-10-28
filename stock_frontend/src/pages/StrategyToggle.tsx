@@ -18,6 +18,9 @@ export default function StrategyToggle() {
     paused: 0
   });
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editStockName, setEditStockName] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -59,6 +62,31 @@ export default function StrategyToggle() {
       showMsg(true, '删除成功');
     } catch (e) {
       showMsg(false, `删除失败: ${(e as Error).message}`);
+    }
+  };
+
+  const handleStartEdit = (item: StrategyStockConfigItem) => {
+    setEditingId(item.id);
+    setEditStockName(item.stock_name ?? '');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditStockName('');
+  };
+
+  const handleSaveEdit = async (id: number) => {
+    setSavingEdit(true);
+    const stockName = editStockName.trim();
+    try {
+      await stockAPI.updateStrategyStockConfig(id, { stock_name: stockName });
+      setConfigs(prev => prev.map(c => c.id === id ? { ...c, stock_name: stockName } : c));
+      handleCancelEdit();
+      showMsg(true, '股票名称已更新');
+    } catch (e) {
+      showMsg(false, `更新失败: ${(e as Error).message}`);
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -233,7 +261,7 @@ export default function StrategyToggle() {
                 <th className="px-4 py-3 text-center text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">是否暂停</th>
                 <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">策略类型</th>
                 <th className="px-4 py-3 text-right text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">更新时间</th>
-                <th className="w-16 px-4 py-3"></th>
+                <th className="w-36 px-4 py-3 text-right text-sm font-medium text-gray-500 dark:text-gray-400">操作</th>
             </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
@@ -247,7 +275,26 @@ export default function StrategyToggle() {
                 className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
               >
                 <td className="px-4 py-4 text-sm text-gray-900 dark:text-white">
-                  <span className="font-bold">{item.stock_name || '-'}（{item.stock_code}）</span>
+                  {editingId === item.id ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={editStockName}
+                        onChange={e => setEditStockName(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleSaveEdit(item.id);
+                          if (e.key === 'Escape') handleCancelEdit();
+                        }}
+                        disabled={savingEdit}
+                        autoFocus
+                        aria-label={`修改 ${item.stock_code} 的股票名称`}
+                        className="w-40 rounded border border-gray-300 bg-white px-2 py-1 font-normal text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      />
+                      <span className="font-bold">（{item.stock_code}）</span>
+                    </div>
+                  ) : (
+                    <span className="font-bold">{item.stock_name || '-'}（{item.stock_code}）</span>
+                  )}
                 </td>
                 <td className="px-4 py-4 text-center text-sm">
                   <button
@@ -287,6 +334,31 @@ export default function StrategyToggle() {
                     : '-'}
                 </td>
                 <td className="px-4 py-4 text-right text-sm">
+                  {editingId === item.id ? (
+                    <>
+                      <button
+                        onClick={() => handleSaveEdit(item.id)}
+                        disabled={savingEdit}
+                        className="mr-3 text-blue-600 hover:text-blue-700 disabled:opacity-50 dark:text-blue-400"
+                      >
+                        {savingEdit ? '保存中' : '保存'}
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        disabled={savingEdit}
+                        className="mr-3 text-gray-500 hover:text-gray-700 disabled:opacity-50 dark:text-gray-400"
+                      >
+                        取消
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => handleStartEdit(item)}
+                      className="mr-3 text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                    >
+                      编辑
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDelete(item.id, item.stock_code)}
                     className="text-gray-400 hover:text-red-500 transition-colors"
