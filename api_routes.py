@@ -392,55 +392,6 @@ def register_routes(app):
             print(f"[API] 获取市场情绪指标失败: {error_msg}")
             return jsonify({'success': False, 'error': '获取数据失败', 'message': error_msg}), 500
 
-    # ==================== 市场涨跌平家数接口 ====================
-    _breadth_cache = {'data': None, 'timestamp': 0}
-
-    @app.route('/api/market/breadth', methods=['GET'])
-    def get_market_breadth():
-        """获取沪深两市涨跌平家数（akshare 腾讯实时行情）"""
-        import time as _time
-        now = _time.time()
-        # 缓存120秒（接口耗时约28秒）
-        if _breadth_cache['data'] and (now - _breadth_cache['timestamp']) < 120:
-            return jsonify(_breadth_cache['data'])
-
-        try:
-            import akshare as ak
-            df = ak.stock_zh_a_spot_tx()
-            if df is None or df.empty:
-                return jsonify({'error': '未获取到市场数据'}), 500
-
-            # 过滤北交所（bj开头）
-            df = df[~df['code'].str.startswith('bj')]
-
-            # zdf = 涨跌幅
-            zdf = pd.to_numeric(df['zdf'], errors='coerce').fillna(0)
-            up = int((zdf > 0).sum())
-            down = int((zdf < 0).sum())
-            flat = int((zdf == 0).sum())
-            limit_up = int((zdf >= 9.8).sum())
-            limit_down = int((zdf <= -9.8).sum())
-
-            # 总成交额（turnover 单位：万元）
-            total_amount = 0
-            if 'turnover' in df.columns:
-                total_amount = round(pd.to_numeric(df['turnover'], errors='coerce').fillna(0).sum() / 10000, 2)  # 转为亿
-
-            result = {
-                'up_count': up,
-                'down_count': down,
-                'flat_count': flat,
-                'limit_up_count': limit_up,
-                'limit_down_count': limit_down,
-                'total_count': up + down + flat,
-                'total_amount': total_amount,
-            }
-            _breadth_cache['data'] = result
-            _breadth_cache['timestamp'] = now
-            return jsonify(result)
-        except Exception as e:
-            return jsonify({'error': '获取涨跌数据失败', 'message': str(e)}), 500
-
     @app.route('/api/health')
     def health():
         """健康检查"""
