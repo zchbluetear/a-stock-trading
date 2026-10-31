@@ -24,6 +24,8 @@ interface StrongStock {
   sector_rank: number | null;
   sector_limit_ups: number | null;
   market_up_count: number | null;
+  seal_capital: number | null;
+  score: number;
 }
 
 interface StrongStocksResponse {
@@ -50,6 +52,7 @@ interface NineTurnStock {
   td_count: number;
   direction: 'buy' | 'sell';
   direction_label: string;
+  ma5: number | null;
 }
 
 interface NineTurnResponse {
@@ -228,9 +231,8 @@ export default function Strategy() {
       <div className="mb-4 w-full min-w-0">
         <div className="flex w-full min-w-0 flex-nowrap items-center justify-between gap-1 sm:gap-3">
         <h2 className="min-w-0 shrink-0 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white sm:text-xl">
-          <span>{isStrongStocks ? '二板分歧' : '九九归一'}</span>
-          {isStrongStocks && data && <span className="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400 sm:ml-2 sm:text-sm">共{data.count}只</span>}
-          {isNineTurn && nineData && <span className="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400 sm:ml-2 sm:text-sm">共{nineData.count}只</span>}
+          {isStrongStocks && data && <span className="text-xs font-normal text-gray-500 dark:text-gray-400 sm:text-sm">共{data.count}只</span>}
+          {isNineTurn && nineData && <span className="text-xs font-normal text-gray-500 dark:text-gray-400 sm:text-sm">共{nineData.count}只</span>}
         </h2>
         <div className="flex min-w-0 shrink-0 flex-nowrap items-center gap-1 sm:gap-3">
           {isStrongStocks && (
@@ -310,6 +312,7 @@ export default function Strategy() {
               <table className="min-w-full whitespace-nowrap divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-900">
                   <tr>
+                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">置信度</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">名称</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">所属板块</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">T-1/T-2</th>
@@ -321,8 +324,16 @@ export default function Strategy() {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {data.stocks.map((stock) => (
+                  {data.stocks.map((stock) => {
+                    const scoreColor = stock.score >= 80 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : stock.score >= 60 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : stock.score >= 40 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400';
+                    const scoreLabel = stock.score >= 80 ? '重点关注' : stock.score >= 60 ? '适度参与' : stock.score >= 40 ? '一般' : '回避';
+                    return (
                     <tr key={stock.code} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                      <td className="px-4 py-2.5 text-center">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${scoreColor}`}>
+                          {scoreLabel}
+                        </span>
+                      </td>
                       <td className="min-w-[150px] px-4 py-2.5 text-sm text-gray-900 dark:text-white">
                         <div className="flex items-center gap-2 whitespace-nowrap font-medium">
                           <span>{stock.name}</span>
@@ -360,7 +371,7 @@ export default function Strategy() {
                         )}
                       </td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        {stock.current_price ? `¥${stock.current_price.toFixed(2)}` : '-'}
+                        {stock.current_price ? `${stock.current_price.toFixed(2)}` : '-'}
                       </td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-sm">
                         <div className="flex items-center gap-2">
@@ -372,7 +383,8 @@ export default function Strategy() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -412,6 +424,7 @@ export default function Strategy() {
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">名称</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">信号</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">当前价</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">MA5</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
                   </tr>
                 </thead>
@@ -436,7 +449,14 @@ export default function Strategy() {
                         </span>
                       </td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        {stock.current_price ? `¥${stock.current_price.toFixed(2)}` : '-'}
+                        {stock.current_price ? `${stock.current_price.toFixed(2)}` : '-'}
+                      </td>
+                      <td className="px-4 py-2.5 whitespace-nowrap text-sm">
+                        {stock.ma5 != null ? (
+                          <span className={stock.current_price != null && stock.current_price >= stock.ma5 ? 'text-red-600 dark:text-red-400 font-medium' : 'text-green-600 dark:text-green-400 font-medium'}>
+                            {stock.ma5.toFixed(2)}
+                          </span>
+                        ) : '-'}
                       </td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-sm">
                         <div className="flex items-center gap-2">

@@ -276,7 +276,7 @@ def run_intraday_nine_turn_push_task():
 
             title = f"{emoji} {s['name']} {label}信号"
             lines = [f'<h3>{emoji} {s["name"]}（{s["code"]}）{label}信号</h3>']
-            lines.append(f'<p><b>当前价：</b>¥{s["current_price"]:.2f}</p>')
+            lines.append(f'<p><b>当前价：</b>{s["current_price"]:.2f}</p>')
             lines.append(f'<p><b>涨幅：</b>{pct}</p>')
             lines.append(f'<p><b>信号K线：</b>{s["signal_time"]}</p>')
             lines.append(f'<p><b>推送时间：</b>{now_str}</p>')
@@ -2238,7 +2238,17 @@ def register_routes(app):
                             if field in row and pd.notna(row[field]):
                                 industry = str(row[field]).strip()
                                 break
-                        
+
+                        # 提取封板资金（元）
+                        seal_capital = 0
+                        for field in ['封板资金', '封单资金']:
+                            if field in row and pd.notna(row[field]):
+                                try:
+                                    seal_capital = float(row[field])
+                                except Exception:
+                                    pass
+                                break
+
                         stocks.append({
                             'code': code,
                             'name': name or '未知',
@@ -2246,6 +2256,7 @@ def register_routes(app):
                             'consecutive_days': consecutive_days,
                             'break_count': break_count,
                             'industry': industry,
+                            'seal_capital': seal_capital,
                             'date': date_str
                         })
                     
@@ -2350,6 +2361,113 @@ def register_routes(app):
 
             from concurrent.futures import ThreadPoolExecutor, as_completed
 
+            # 构建行业涨停数映射（用于板块共振评分）
+            industry_limit_count = {}
+            for s in t_limit_stocks:
+                ind = s.get('industry', '')
+                if ind:
+                    industry_limit_count[ind] = industry_limit_count.get(ind, 0) + 1
+
+            # ---------- 综合评分函数（0-100，连续函数） ----------
+            def _parse_time_minutes(time_str):
+                """将时间字符串解析为分钟数（09:25:00 → 565）"""
+                if not time_str:
+                    return 690  # 默认 11:30
+                try:
+                    parts = str(time_str).split(':')
+                    h, m = int(parts[0]), int(parts[1])
+                    s = int(parts[2]) if len(parts) > 2 else 0
+                    return h * 60 + m + s / 60.0
+                except Exception:
+                    return 690
+
+            def _clamp(value, lo, hi):
+                return max(lo, min(hi, value))
+
+            def calc_score(stock, ind_limit_count):
+                score = 0
+
+                # ===== 1. 封板质量分（25分）=====
+
+                # 1a. 首次封板时间（0-15分）—— 连续线性插值
+                #     09:25(565min) → 15分，  11:30(690min) → 3分
+                t1_min = _parse_time_minutes(stock.get('t1_limit_time'))
+                t1_min = _clamp(t1_min, 565, 690)
+                time_score = round(15 - (t1_min - 565) / (690 - 565) * 12, 1)
+                score += time_score
+
+                # 1b. 炸板次数（0-10分）—— 连续衰减
+                bc = stock.get('break_count', 0)
+                break_score = max(0, 10 - bc * 4)
+                score += break_score
+
+                # ===== 2. 回调质量分（0-25分）× 量比因子 =====
+                chg = stock.get('change_percent')
+                vol_ratio = stock.get('volume_ratio')
+
+                if chg is not None:
+                    # 连续函数：以涨幅 1.5% 为峰值（25分），向两侧平滑衰减
+                    #   chg=1.5  → 25分
+                    #   chg=-3   → ~12分
+                    #   chg=-8   → ~1分
+                    #   chg=8    → ~8分
+                    if chg <= 1.5:
+                        # 左侧：从 1.5% 往左线性下降，每降 1% 减 3 分
+                        callback_raw = max(0, 25 - (1.5 - chg) * 3)
+                    else:
+                        # 右侧：从 1.5% 往右线性下降，每涨 1% 减 2.5 分
+                        callback_raw = max(0, 25 - (chg - 1.5) * 2.5)
+
+                    # 量比因子：缩量回调加分，放量杀跌减分
+                    if vol_ratio is not None and vol_ratio > 0:
+                        if vol_ratio < 0.8:
+                            vol_factor = 1.2   # 缩量回调，放大得分
+                        elif vol_ratio < 1.2:
+                            vol_factor = 1.0   # 正常量能
+                        elif vol_ratio < 2.0:
+                            vol_factor = 0.75  # 放量，削弱得分
+                        else:
+                            vol_factor = 0.5   # 剧烈放量，大幅削弱
+                    else:
+                        vol_factor = 1.0  # 无量比数据时不调整
+
+                    score += round(callback_raw * vol_factor, 1)
+                else:
+                    score += 10  # 无行情数据默认分
+
+                # ===== 3. 连板溢价分（0-20分）=====
+                cd = stock.get('consecutive_days', 0)
+                consecutive_score = min(20, 8 + cd * 4)
+                score += consecutive_score
+
+                # 强度类型加成（微量补充）
+                st = stock.get('strength_type', '')
+                if st == '缩量板':
+                    score += 2
+
+                # ===== 4. 板块共振分（0-15分）=====
+                industry = stock.get('industry', '')
+                if industry:
+                    cnt = ind_limit_count.get(industry, 0)
+                    # 连续函数：每多1只同行业涨停加 5 分，封顶 15
+                    resonance = min(15, cnt * 5)
+                    score += resonance
+
+                # ===== 5. 位置评估分（0-15分）=====
+                amp = stock.get('amplitude_250')
+                if amp is not None:
+                    # 连续函数：振幅 1.0x→10分，3.0x→1分，线性插值
+                    amp_clamped = _clamp(amp, 1.0, 3.0)
+                    position_score = round(10 - (amp_clamped - 1.0) / 2.0 * 9, 1)
+                    score += position_score
+                else:
+                    score += 4
+
+                if stock.get('breakout_60') is True:
+                    score += 5  # 突破60日平台加分
+
+                return min(round(score), 100)
+
             # 优化查找效率
             t1_early_map = {s['code']: s for s in t1_early}
             t2_early_map = {s['code']: s for s in t2_early}
@@ -2371,6 +2489,7 @@ def register_routes(app):
                     'consecutive_days': t1_info.get('consecutive_days', 0),
                     'break_count': t1_info.get('break_count', 0),
                     'industry': t1_info.get('industry', ''),
+                    'seal_capital': t1_info.get('seal_capital', 0),
                     'current_price': None,
                     'change_percent': None,
                     'volume': None,
@@ -2378,6 +2497,8 @@ def register_routes(app):
                     'strength_type': None,
                     'amplitude_250': None,
                     'breakout_60': None,
+                    'volume_ratio': None,
+                    'score': 0,
                 }
 
                 # 获取实时行情
@@ -2426,6 +2547,13 @@ def register_routes(app):
                         if len(df) >= 62:
                             platform_60 = df['high'].iloc[-62:-2].max()
                             stock_data['breakout_60'] = bool(t1_row['close'] > platform_60)
+
+                        # 计算量比：T日成交量 / 过去5日平均成交量
+                        if len(df) >= 7:
+                            avg_vol_5d = df['volume'].iloc[-7:-2].mean()
+                            t_vol = df['volume'].iloc[-1]
+                            if avg_vol_5d > 0:
+                                stock_data['volume_ratio'] = round(t_vol / avg_vol_5d, 2)
                 except Exception as e:
                     print(f"[API] 计算 {code} 强度信息失败: {e}")
                     
@@ -2438,10 +2566,12 @@ def register_routes(app):
                     if res:
                         result_stocks.append(res)
 
-            # 按照股票代码排序，确保顺序固定
-            result_stocks.sort(key=lambda x: x['code'])
+            # 计算综合评分并按评分降序排列
+            for s in result_stocks:
+                s['score'] = calc_score(s, industry_limit_count)
+            result_stocks.sort(key=lambda x: x['score'], reverse=True)
 
-            print(f"[API] 返回强势股数据，共 {len(result_stocks)} 只")
+            print(f"[API] 返回强势股数据，共 {len(result_stocks)} 只，按综合评分降序")
             
             return jsonify({
                 'strategy': 'strong_stocks',
@@ -2474,38 +2604,45 @@ def register_routes(app):
             # 1. 通过新浪API获取沪深主板行情快照
             SINA_HEADERS = {'User-Agent': 'Mozilla/5.0', 'Referer': 'http://finance.sina.com.cn'}
             SINA_NODE_URL = 'http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData'
+            PAGE_SIZE = 200  # 每页200条，减少请求次数
 
             def _fetch_sina_page(node, page):
                 """获取新浪行情分页数据"""
                 resp = requests.get(SINA_NODE_URL, params={
-                    'page': page, 'num': 80, 'sort': 'symbol', 'asc': 1,
+                    'page': page, 'num': PAGE_SIZE, 'sort': 'symbol', 'asc': 1,
                     'node': node, 'symbol': '', '_s_r_a': 'initlen',
                 }, headers=SINA_HEADERS, timeout=10)
                 resp.raise_for_status()
                 return resp.json() if resp.text.strip() else []
 
-            # 并行获取沪市(sh_a)和深市(sz_a)所有分页
-            all_rows = []
-            for node in ['sh_a', 'sz_a']:
-                first = _fetch_sina_page(node, 1)
-                if not first:
-                    continue
-                all_rows.extend(first)
-                # 估算总页数（每顂80条）
-                import math
-                est_pages = max(1, math.ceil(len(first) * 30 / 80))  # 粗略估算
-                if len(first) >= 80:
-                    # 继续获取剩余分页
-                    for p in range(2, min(est_pages + 5, 60)):  # 最多60页
-                        try:
-                            page_data = _fetch_sina_page(node, p)
-                            if not page_data:
-                                break
-                            all_rows.extend(page_data)
-                            if len(page_data) < 80:
-                                break
-                        except Exception:
+            def _fetch_all_for_node(node):
+                """拉取某个节点（sh_a/sz_a）的全部数据，直到数据拉完"""
+                node_rows = []
+                page = 1
+                while page <= 60:  # 安全上限
+                    try:
+                        data = _fetch_sina_page(node, page)
+                        if not data:
                             break
+                        node_rows.extend(data)
+                        if len(data) < PAGE_SIZE:
+                            break
+                        page += 1
+                    except Exception:
+                        break
+                return node_rows
+
+            # 沪深两市并行拉取，确保全部数据到齐后再进入扫描
+            all_rows = []
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                futures = {pool.submit(_fetch_all_for_node, node): node for node in ['sh_a', 'sz_a']}
+                for fut in as_completed(futures):
+                    try:
+                        rows = fut.result()
+                        all_rows.extend(rows)
+                        print(f"[API] {futures[fut]} 拉取完成: {len(rows)} 只")
+                    except Exception:
+                        pass
 
             print(f"[API] 获取到沪深行情: {len(all_rows)} 只")
 
@@ -2609,15 +2746,31 @@ def register_routes(app):
 
                     # 只保留 TD=9（刚完成9转信号）
                     if count == 9 and direction:
+                        # 获取实时价格
+                        realtime_price = stock_info.get('current_price')
+                        if not realtime_price or realtime_price <= 0:
+                            return None
+
+                        # 静态MA5：前5个交易日收盘均价（不含今日）
+                        ma5 = sum(closes[-5:]) / 5 if len(closes) >= 5 else 0
+
+                        # 低9: 实时价 >= MA5（价格在5日线上方，有支撑）
+                        # 高9: 实时价 < MA5（价格跌破5日线，走弱确认）
+                        if direction == 'buy' and realtime_price < ma5:
+                            return None
+                        if direction == 'sell' and realtime_price >= ma5:
+                            return None
+
                         return {
                             'code': stock_info['code'],
                             'name': stock_info['name'],
-                            'current_price': stock_info['current_price'],
+                            'current_price': realtime_price,
                             'change_percent': stock_info['change_percent'],
                             'industry': stock_info['industry'],
                             'td_count': count,
                             'direction': direction,
                             'direction_label': '低9（买入信号）' if direction == 'buy' else '高9（卖出信号）',
+                            'ma5': round(ma5, 2),
                         }
                 except Exception as e:
                     pass
