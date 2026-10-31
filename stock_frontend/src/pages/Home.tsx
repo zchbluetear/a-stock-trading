@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { stockAPI } from '../services/api';
 import { SentimentDashboard } from './Sentiment';
 
 // 判断是否在交易时间
@@ -53,10 +52,50 @@ export default function Home() {
     retry: 2,
   });
 
+  // 获取市场涨跌平家数
+  const fetchBreadth = async () => {
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5001`;
+    const res = await fetch(`${apiUrl}/api/market/breadth`);
+    if (!res.ok) throw new Error('breadth fetch failed');
+    return res.json();
+  };
+  const { data: breadthData } = useQuery({
+    queryKey: ['market-breadth'],
+    queryFn: fetchBreadth,
+    refetchInterval: 60000,
+    staleTime: 30000,
+    retry: 1,
+  });
+  const up_count = breadthData?.up_count;
+  const down_count = breadthData?.down_count;
+  const flat_count = breadthData?.flat_count;
+
   return (
     <div className="space-y-4">
       <section className="space-y-2" aria-label="市场指数">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">市场指数</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">市场指数</h2>
+          <div className="flex items-center gap-3 text-xs">
+            {/* 涨跌平家数 */}
+            {up_count != null && (
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-red-600 dark:text-red-400">涨{up_count}</span>
+                <span className="font-semibold text-green-600 dark:text-green-400">跌{down_count}</span>
+                <span className="text-gray-400 dark:text-gray-500">平{flat_count}</span>
+              </div>
+            )}
+            {/* 两市成交额 */}
+            {(!shLoading || !szLoading) && shIndex?.amount != null && szIndex?.amount != null && (
+              <div className="flex items-center gap-1">
+                <span className="text-gray-500 dark:text-gray-400">成交额</span>
+                <span className="font-bold tabular-nums text-gray-900 dark:text-white">
+                  {((Number(shIndex.amount) + Number(szIndex.amount)) / 1e8).toFixed(0)}
+                </span>
+                <span className="text-gray-500 dark:text-gray-400">亿</span>
+              </div>
+            )}
+          </div>
+        </div>
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-5">
           <div className="grid grid-cols-1 divide-y divide-gray-200 dark:divide-gray-700 sm:grid-cols-3 sm:divide-y-0 sm:divide-x">
             <IndexCard title="上证指数" data={shIndex} isLoading={shLoading} />

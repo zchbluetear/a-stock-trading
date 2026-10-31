@@ -113,6 +113,7 @@ def is_candidate(row):
 def build_snapshot(rows, limits):
     stocks = []
     unknown = invalid = 0
+    up_count = down_count = flat_count = 0
     dates = set()
     timestamps = []
     for row in rows:
@@ -124,6 +125,13 @@ def build_snapshot(rows, limits):
         if price is None or price <= 0 or change is None or not day:
             invalid += 1
             continue
+        # 统计涨跌平家数（在 is_candidate 过滤之前）
+        if change > 0:
+            up_count += 1
+        elif change < 0:
+            down_count += 1
+        else:
+            flat_count += 1
         if not is_candidate(row):
             continue
         upper = limits.get(row['f12'])
@@ -148,7 +156,8 @@ def build_snapshot(rows, limits):
             'limit_unknown_count': unknown, 'quote_dates': sorted(dates),
             'quote_time': datetime.fromtimestamp(max(timestamps), TZ).isoformat(),
             'limit_up_count': sum(s['limit_up'] for s in stocks),
-            'gainer_count': sum(s['change_percent'] >= 5 for s in stocks)}
+            'gainer_count': sum(s['change_percent'] >= 5 for s in stocks),
+            'up_count': up_count, 'down_count': down_count, 'flat_count': flat_count}
 
 
 class MarketScanner:

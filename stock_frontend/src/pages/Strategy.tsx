@@ -53,6 +53,9 @@ interface NineTurnStock {
   direction: 'buy' | 'sell';
   direction_label: string;
   ma5: number | null;
+  above_ma5: boolean;
+  score: number;
+  score_label: string;
 }
 
 interface NineTurnResponse {
@@ -64,11 +67,43 @@ interface NineTurnResponse {
   stocks: NineTurnStock[];
 }
 
-type StrategyTab = 'strong_stocks' | 'nine_turn';
+interface TrendStock {
+  code: string;
+  name: string;
+  current_price: number;
+  change_percent: number;
+  ma5: number;
+  ma10: number;
+  ma20: number;
+  ma60: number;
+  ma20_slope: number;
+  pullback_pct: number;
+  macd_ok: boolean;
+  vol_ratio: number;
+  score: number;
+}
+
+interface BreakoutStock {
+  code: string;
+  name: string;
+  current_price: number;
+  change_percent: number;
+  platform_high: number;
+  platform_low: number;
+  amplitude: number;
+  breakout_pct: number;
+  vol_surge: number;
+  ma20_up: boolean;
+  score: number;
+}
+
+type StrategyTab = 'strong_stocks' | 'nine_turn' | 'trend_following' | 'breakout';
 
 const STRATEGY_TABS: { key: StrategyTab; label: string }[] = [
   { key: 'strong_stocks', label: '二板分歧' },
   { key: 'nine_turn', label: '九九归一' },
+  { key: 'trend_following', label: '趋势跟踪' },
+  { key: 'breakout', label: '突破策略' },
 ];
 
 const TIME_OPTIONS = [
@@ -90,6 +125,8 @@ export default function Strategy() {
 
   const isStrongStocks = strategyType === 'strong_stocks';
   const isNineTurn = strategyType === 'nine_turn';
+  const isTrend = strategyType === 'trend_following';
+  const isBreakout = strategyType === 'breakout';
 
   const { data, isLoading, error, refetch, isFetching } = useQuery<StrongStocksResponse>({
     queryKey: ['strong-stocks', limitTime],
@@ -110,9 +147,39 @@ export default function Strategy() {
     queryKey: ['nine-turn'],
     queryFn: () => stockAPI.getNineTurnStocks(),
     enabled: isNineTurn,
-    refetchInterval: isNineTurn ? 180000 : false,
+    refetchInterval: isNineTurn ? 120000 : false,
     refetchIntervalInBackground: true,
     staleTime: 60000,
+  });
+
+  const {
+    data: trendData,
+    isLoading: trendLoading,
+    error: trendError,
+    refetch: trendRefetch,
+    isFetching: trendIsFetching,
+    dataUpdatedAt: trendUpdatedAt,
+  } = useQuery<{ strategy: string; description: string; count: number; scanned: number; stocks: TrendStock[] }>({
+    queryKey: ['trend-following'],
+    queryFn: () => stockAPI.getTrendFollowing(),
+    enabled: isTrend,
+    refetchInterval: isTrend ? 120000 : false,
+    staleTime: 120000,
+  });
+
+  const {
+    data: breakoutData,
+    isLoading: breakoutLoading,
+    error: breakoutError,
+    refetch: breakoutRefetch,
+    isFetching: breakoutIsFetching,
+    dataUpdatedAt: breakoutUpdatedAt,
+  } = useQuery<{ strategy: string; description: string; count: number; scanned: number; stocks: BreakoutStock[] }>({
+    queryKey: ['breakout'],
+    queryFn: () => stockAPI.getBreakout(),
+    enabled: isBreakout,
+    refetchInterval: isBreakout ? 120000 : false,
+    staleTime: 120000,
   });
 
   const { data: agents, isLoading: agentsLoading } = useQuery({
@@ -233,6 +300,8 @@ export default function Strategy() {
         <h2 className="min-w-0 shrink-0 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white sm:text-xl">
           {isStrongStocks && data && <span className="text-xs font-normal text-gray-500 dark:text-gray-400 sm:text-sm">共{data.count}只</span>}
           {isNineTurn && nineData && <span className="text-xs font-normal text-gray-500 dark:text-gray-400 sm:text-sm">共{nineData.count}只</span>}
+          {isTrend && trendData && <span className="text-xs font-normal text-gray-500 dark:text-gray-400 sm:text-sm">共{trendData.count}只</span>}
+          {isBreakout && breakoutData && <span className="text-xs font-normal text-gray-500 dark:text-gray-400 sm:text-sm">共{breakoutData.count}只</span>}
         </h2>
         <div className="flex min-w-0 shrink-0 flex-nowrap items-center gap-1 sm:gap-3">
           {isStrongStocks && (
@@ -263,16 +332,31 @@ export default function Strategy() {
               更新于 {new Date(nineUpdatedAt).toLocaleTimeString('zh-CN', { hour12: false })}
             </span>
           )}
+          {isTrend && trendUpdatedAt > 0 && (
+            <span className="shrink-0 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+              更新于 {new Date(trendUpdatedAt).toLocaleTimeString('zh-CN', { hour12: false })}
+            </span>
+          )}
+          {isBreakout && breakoutUpdatedAt > 0 && (
+            <span className="shrink-0 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+              更新于 {new Date(breakoutUpdatedAt).toLocaleTimeString('zh-CN', { hour12: false })}
+            </span>
+          )}
           <button
-            onClick={() => isStrongStocks ? refetch() : nineRefetch()}
-            disabled={isStrongStocks ? isFetching : nineIsFetching}
+            onClick={() => {
+              if (isStrongStocks) refetch();
+              else if (isNineTurn) nineRefetch();
+              else if (isTrend) trendRefetch();
+              else breakoutRefetch();
+            }}
+            disabled={isStrongStocks ? isFetching : isNineTurn ? nineIsFetching : isTrend ? trendIsFetching : breakoutIsFetching}
             className="flex shrink-0 items-center gap-1 rounded-lg bg-blue-600 px-2 py-1.5 text-sm text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:gap-2 sm:px-4 sm:py-2"
           >
-            <svg className={`h-4 w-4 sm:h-5 sm:w-5 ${(isStrongStocks ? isFetching : nineIsFetching) ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className={`h-4 w-4 sm:h-5 sm:w-5 ${(isStrongStocks ? isFetching : isNineTurn ? nineIsFetching : isTrend ? trendIsFetching : breakoutIsFetching) ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            <span className="sm:hidden">{(isStrongStocks ? isFetching : nineIsFetching) ? '刷新中' : '刷新'}</span>
-            <span className="hidden sm:inline">{(isStrongStocks ? isFetching : nineIsFetching) ? '刷新中...' : '刷新'}</span>
+            <span className="sm:hidden">{(isStrongStocks ? isFetching : isNineTurn ? nineIsFetching : isTrend ? trendIsFetching : breakoutIsFetching) ? '刷新中' : '刷新'}</span>
+            <span className="hidden sm:inline">{(isStrongStocks ? isFetching : isNineTurn ? nineIsFetching : isTrend ? trendIsFetching : breakoutIsFetching) ? '刷新中...' : '刷新'}</span>
           </button>
         </div>
         </div>
@@ -312,7 +396,8 @@ export default function Strategy() {
               <table className="min-w-full whitespace-nowrap divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-900">
                   <tr>
-                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">置信度</th>
+                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">建议</th>
+                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">评分</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">名称</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">所属板块</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">T-1/T-2</th>
@@ -326,13 +411,16 @@ export default function Strategy() {
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {data.stocks.map((stock) => {
                     const scoreColor = stock.score >= 80 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : stock.score >= 60 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : stock.score >= 40 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400';
-                    const scoreLabel = stock.score >= 80 ? '重点关注' : stock.score >= 60 ? '适度参与' : stock.score >= 40 ? '一般' : '回避';
+                    const scoreLabel = stock.score >= 80 ? '重点关注' : stock.score >= 60 ? '可关注' : stock.score >= 40 ? '一般' : '回避';
                     return (
                     <tr key={stock.code} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                       <td className="px-4 py-2.5 text-center">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${scoreColor}`}>
                           {scoreLabel}
                         </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-center text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                        {stock.score}
                       </td>
                       <td className="min-w-[150px] px-4 py-2.5 text-sm text-gray-900 dark:text-white">
                         <div className="flex items-center gap-2 whitespace-nowrap font-medium">
@@ -421,6 +509,8 @@ export default function Strategy() {
               <table className="min-w-full whitespace-nowrap divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-900">
                   <tr>
+                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">建议</th>
+                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">评分</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">名称</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">信号</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">当前价</th>
@@ -431,6 +521,14 @@ export default function Strategy() {
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {nineData.stocks.map((stock) => (
                     <tr key={stock.code} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                      <td className="px-4 py-2.5 text-center">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${stock.score >= 90 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+                          {stock.score_label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-center text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                        {stock.score}
+                      </td>
                       <td className="min-w-[150px] px-4 py-2.5 text-sm text-gray-900 dark:text-white">
                         <div className="flex items-center gap-2 whitespace-nowrap font-medium">
                           <span>{stock.name}</span>
@@ -468,6 +566,156 @@ export default function Strategy() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      )}
+
+      {/* 趋势跟踪 - 股票列表 */}
+      {isTrend && (
+        trendLoading ? (
+          <div className="flex justify-center py-12"><LoadingSpinner text="扫描趋势股..." /></div>
+        ) : trendError ? (
+          <div className="text-center py-12 text-red-500">加载失败: {(trendError as Error).message}</div>
+        ) : !trendData || trendData.stocks.length === 0 ? (
+          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <p className="text-gray-500 dark:text-gray-400">暂无符合趋势跟踪条件的股票</p>
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow">
+            <p className="px-3 pt-3 mb-2 text-xs text-gray-500 dark:text-gray-400 lg:hidden">左右滑动表格，查看完整信息</p>
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="趋势跟踪数据表格">
+              <table className="min-w-full whitespace-nowrap divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-900">
+                  <tr>
+                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">建议</th>
+                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">评分</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">名称</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">当前价</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">MA20斜率</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">回调幅度</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">MACD</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">量比</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {trendData.stocks.map((stock) => {
+                    const sc = stock.score >= 75 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : stock.score >= 55 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+                    const sl = stock.score >= 75 ? '强趋势' : stock.score >= 55 ? '可关注' : '一般';
+                    return (
+                    <tr key={stock.code} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                      <td className="px-4 py-2.5 text-center">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${sc}`}>{sl}</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-center text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                        {stock.score}
+                      </td>
+                      <td className="min-w-[150px] px-4 py-2.5 text-sm text-gray-900 dark:text-white">
+                        <div className="flex items-center gap-2 whitespace-nowrap font-medium">
+                          <span>{stock.name}</span>
+                          <span className={`text-xs font-semibold ${stock.change_percent >= 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                            {stock.change_percent >= 0 ? '+' : ''}{stock.change_percent.toFixed(2)}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white">{stock.current_price.toFixed(2)}</td>
+                      <td className="px-4 py-2.5 text-sm text-red-600 dark:text-red-400 font-medium">+{stock.ma20_slope.toFixed(2)}%</td>
+                      <td className="px-4 py-2.5 text-sm text-gray-900 dark:text-white">{stock.pullback_pct.toFixed(1)}%</td>
+                      <td className="px-4 py-2.5 text-sm">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${stock.macd_ok ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>
+                          {stock.macd_ok ? 'DIF>DEA>0' : '未确认'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-sm text-gray-900 dark:text-white">{stock.vol_ratio.toFixed(2)}</td>
+                      <td className="px-4 py-2.5 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Link to={`/stock/${stock.code}`} className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">详情</Link>
+                          <button onClick={() => handleAddWatchlist(stock.code, stock.name)} disabled={addingMap[stock.code] || addedMap[stock.code]} className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50">
+                            {addedMap[stock.code] ? '已加入' : addingMap[stock.code] ? '加入中' : '加入自选'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      )}
+
+      {/* 突破策略 - 股票列表 */}
+      {isBreakout && (
+        breakoutLoading ? (
+          <div className="flex justify-center py-12"><LoadingSpinner text="扫描突破股..." /></div>
+        ) : breakoutError ? (
+          <div className="text-center py-12 text-red-500">加载失败: {(breakoutError as Error).message}</div>
+        ) : !breakoutData || breakoutData.stocks.length === 0 ? (
+          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <p className="text-gray-500 dark:text-gray-400">暂无符合突破条件的股票</p>
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow">
+            <p className="px-3 pt-3 mb-2 text-xs text-gray-500 dark:text-gray-400 lg:hidden">左右滑动表格，查看完整信息</p>
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="突破策略数据表格">
+              <table className="min-w-full whitespace-nowrap divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-900">
+                  <tr>
+                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">建议</th>
+                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">评分</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">名称</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">当前价</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">平台上沿</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">突破幅度</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">放量倍数</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">平台振幅</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {breakoutData.stocks.map((stock) => {
+                    const sc = stock.score >= 75 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : stock.score >= 55 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+                    const sl = stock.score >= 75 ? '强突破' : stock.score >= 55 ? '可关注' : '一般';
+                    return (
+                    <tr key={stock.code} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                      <td className="px-4 py-2.5 text-center">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${sc}`}>{sl}</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-center text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                        {stock.score}
+                      </td>
+                      <td className="min-w-[150px] px-4 py-2.5 text-sm text-gray-900 dark:text-white">
+                        <div className="flex items-center gap-2 whitespace-nowrap font-medium">
+                          <span>{stock.name}</span>
+                          <span className={`text-xs font-semibold ${stock.change_percent >= 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                            {stock.change_percent >= 0 ? '+' : ''}{stock.change_percent.toFixed(2)}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white">{stock.current_price.toFixed(2)}</td>
+                      <td className="px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400">{stock.platform_high.toFixed(2)}</td>
+                      <td className="px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400">+{stock.breakout_pct.toFixed(2)}%</td>
+                      <td className="px-4 py-2.5 text-sm">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${stock.vol_surge >= 2 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'}`}>
+                          {stock.vol_surge.toFixed(1)}x
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-sm text-gray-900 dark:text-white">{stock.amplitude.toFixed(1)}%</td>
+                      <td className="px-4 py-2.5 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Link to={`/stock/${stock.code}`} className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">详情</Link>
+                          <button onClick={() => handleAddWatchlist(stock.code, stock.name)} disabled={addingMap[stock.code] || addedMap[stock.code]} className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50">
+                            {addedMap[stock.code] ? '已加入' : addingMap[stock.code] ? '加入中' : '加入自选'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -392,6 +392,55 @@ def register_routes(app):
             print(f"[API] 获取市场情绪指标失败: {error_msg}")
             return jsonify({'success': False, 'error': '获取数据失败', 'message': error_msg}), 500
 
+    # ==================== 市场涨跌平家数接口 ====================
+    _breadth_cache = {'data': None, 'timestamp': 0}
+
+    @app.route('/api/market/breadth', methods=['GET'])
+    def get_market_breadth():
+        """获取沪深两市涨跌平家数（akshare 腾讯实时行情）"""
+        import time as _time
+        now = _time.time()
+        # 缓存120秒（接口耗时约28秒）
+        if _breadth_cache['data'] and (now - _breadth_cache['timestamp']) < 120:
+            return jsonify(_breadth_cache['data'])
+
+        try:
+            import akshare as ak
+            df = ak.stock_zh_a_spot_tx()
+            if df is None or df.empty:
+                return jsonify({'error': '未获取到市场数据'}), 500
+
+            # 过滤北交所（bj开头）
+            df = df[~df['code'].str.startswith('bj')]
+
+            # zdf = 涨跌幅
+            zdf = pd.to_numeric(df['zdf'], errors='coerce').fillna(0)
+            up = int((zdf > 0).sum())
+            down = int((zdf < 0).sum())
+            flat = int((zdf == 0).sum())
+            limit_up = int((zdf >= 9.8).sum())
+            limit_down = int((zdf <= -9.8).sum())
+
+            # 总成交额（turnover 单位：万元）
+            total_amount = 0
+            if 'turnover' in df.columns:
+                total_amount = round(pd.to_numeric(df['turnover'], errors='coerce').fillna(0).sum() / 10000, 2)  # 转为亿
+
+            result = {
+                'up_count': up,
+                'down_count': down,
+                'flat_count': flat,
+                'limit_up_count': limit_up,
+                'limit_down_count': limit_down,
+                'total_count': up + down + flat,
+                'total_amount': total_amount,
+            }
+            _breadth_cache['data'] = result
+            _breadth_cache['timestamp'] = now
+            return jsonify(result)
+        except Exception as e:
+            return jsonify({'error': '获取涨跌数据失败', 'message': str(e)}), 500
+
     @app.route('/api/health')
     def health():
         """健康检查"""
@@ -2569,9 +2618,9 @@ def register_routes(app):
             # 计算综合评分并按评分降序排列
             for s in result_stocks:
                 s['score'] = calc_score(s, industry_limit_count)
-            result_stocks.sort(key=lambda x: x['score'], reverse=True)
+            result_stocks.sort(key=lambda x: (-x['score'], -(x.get('change_percent') or 0), x['code']))
 
-            print(f"[API] 返回强势股数据，共 {len(result_stocks)} 只，按综合评分降序")
+            print(f"[API] 返回强势股数据，共 {len(result_stocks)} 只，按评分降序+涨幅降序")
             
             return jsonify({
                 'strategy': 'strong_stocks',
@@ -2751,15 +2800,17 @@ def register_routes(app):
                         if not realtime_price or realtime_price <= 0:
                             return None
 
+                        # 只保留低9（买入信号），过滤高9
+                        if direction == 'sell':
+                            return None
+
                         # 静态MA5：前5个交易日收盘均价（不含今日）
                         ma5 = sum(closes[-5:]) / 5 if len(closes) >= 5 else 0
 
-                        # 低9: 实时价 >= MA5（价格在5日线上方，有支撑）
-                        # 高9: 实时价 < MA5（价格跌破5日线，走弱确认）
-                        if direction == 'buy' and realtime_price < ma5:
-                            return None
-                        if direction == 'sell' and realtime_price >= ma5:
-                            return None
+                        # 评分：当前价 >= MA5 → 90分“可关注”，否则 60分“低吸”
+                        above_ma5 = realtime_price >= ma5
+                        score = 90 if above_ma5 else 60
+                        score_label = '可关注' if above_ma5 else '一般'
 
                         return {
                             'code': stock_info['code'],
@@ -2769,8 +2820,11 @@ def register_routes(app):
                             'industry': stock_info['industry'],
                             'td_count': count,
                             'direction': direction,
-                            'direction_label': '低9（买入信号）' if direction == 'buy' else '高9（卖出信号）',
+                            'direction_label': '低9（买入信号）',
                             'ma5': round(ma5, 2),
+                            'above_ma5': above_ma5,
+                            'score': score,
+                            'score_label': score_label,
                         }
                 except Exception as e:
                     pass
@@ -2786,8 +2840,8 @@ def register_routes(app):
                     except Exception:
                         pass
 
-            # 按信号方向排序（卖出优先），再按涨幅降序，最后按 code
-            results.sort(key=lambda x: (0 if x['direction'] == 'sell' else 1, -(x['change_percent'] or 0), x['code']))
+            # 按评分降序，同分按涨幅降序
+            results.sort(key=lambda x: (-x['score'], -(x['change_percent'] or 0), x['code']))
 
             print(f"[API] 9转扫描完成，候选{len(candidates)}只，命中{len(results)}只")
 
@@ -2824,6 +2878,395 @@ def register_routes(app):
             print(f"[API] 分时9序列扫描失败: {e}")
             print(f"[API] 错误堆栈: {traceback.format_exc()}")
             return jsonify({'error': '分时9序列扫描失败', 'message': str(e)}), 500
+
+    # ==================== 趋势跟踪策略 ====================
+    @app.route('/api/strategy/trend_following')
+    def get_trend_following():
+        """趋势跟踪策略：均线多头排列 + 回调不破MA20 + MACD零轴上方"""
+        try:
+            print("[API] 开始趋势跟踪策略扫描...")
+
+            # 1. 获取全市场行情快照
+            SINA_HEADERS = {'User-Agent': 'Mozilla/5.0', 'Referer': 'http://finance.sina.com.cn'}
+            SINA_URL = 'http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData'
+            PAGE_SIZE = 200
+
+            def _fetch_node(node):
+                rows = []
+                page = 1
+                while page <= 60:
+                    try:
+                        resp = requests.get(SINA_URL, params={
+                            'page': page, 'num': PAGE_SIZE, 'sort': 'symbol', 'asc': 1,
+                            'node': node, 'symbol': '', '_s_r_a': 'initlen',
+                        }, headers=SINA_HEADERS, timeout=10)
+                        resp.raise_for_status()
+                        data = resp.json() if resp.text.strip() else []
+                        if not data:
+                            break
+                        rows.extend(data)
+                        if len(data) < PAGE_SIZE:
+                            break
+                        page += 1
+                    except Exception:
+                        break
+                return rows
+
+            all_rows = []
+            with ThreadPoolExecutor(max_workers=3) as pool:
+                futures = {pool.submit(_fetch_node, n): n for n in ['sh_a', 'sz_a', 'cyb']}
+                for fut in as_completed(futures):
+                    try:
+                        all_rows.extend(fut.result())
+                    except Exception:
+                        pass
+            print(f"[API] 趋势跟踪: 获取行情 {len(all_rows)} 只")
+
+            # 2. 预过滤
+            candidates = []
+            for row in all_rows:
+                code = str(row.get('code', '')).strip().zfill(6)
+                name = str(row.get('name', '')).strip()
+                if not (code.startswith('60') or code.startswith('00')):
+                    continue
+                if 'ST' in name.upper() or '退' in name:
+                    continue
+                try:
+                    price = float(row.get('trade', 0))
+                    chg = float(row.get('changepercent', 0))
+                except Exception:
+                    continue
+                if price < 2 or price > 200:
+                    continue
+                if chg < -5:  # 排除暴跌股
+                    continue
+                candidates.append({'code': code, 'name': name, 'current_price': price, 'change_percent': chg})
+            print(f"[API] 趋势跟踪: 候选池 {len(candidates)} 只")
+
+            # 3. 并行扫描
+            results = []
+
+            def scan_trend(stock_info):
+                code = stock_info['code']
+                try:
+                    df = get_daily_kline(code, count=80)
+                    if df is None or len(df) < 62:
+                        return None
+                    closes = df['close'].tolist()
+                    volumes = df['volume'].tolist()
+
+                    # 计算均线
+                    ma5 = sum(closes[-5:]) / 5
+                    ma10 = sum(closes[-10:]) / 10
+                    ma20 = sum(closes[-20:]) / 20
+                    ma60 = sum(closes[-60:]) / 60
+
+                    # 核心条件：均线多头排列
+                    if not (ma5 > ma10 > ma20 > ma60):
+                        return None
+                    # 价格在MA20上方
+                    if closes[-1] < ma20:
+                        return None
+
+                    # MA20斜率（近5日MA20方向）
+                    ma20_5ago = sum(closes[-25:-5]) / 20
+                    ma20_slope = (ma20 - ma20_5ago) / ma20_5ago * 100 if ma20_5ago > 0 else 0
+                    if ma20_slope <= 0:
+                        return None  # MA20必须向上
+
+                    # MACD计算 (12,26,9)
+                    ema12 = closes[0]
+                    ema26 = closes[0]
+                    dif_list = []
+                    for c in closes:
+                        ema12 = ema12 * (11/13) + c * (2/13)
+                        ema26 = ema26 * (25/27) + c * (2/27)
+                        dif_list.append(ema12 - ema26)
+                    dea = dif_list[0]
+                    for d in dif_list:
+                        dea = dea * (8/10) + d * (2/10)
+                    dif = dif_list[-1]
+                    macd_ok = dif > dea and dif > 0  # DIF > DEA > 0
+
+                    # 回调深度：价格离MA20的距离
+                    pullback_pct = (closes[-1] - ma20) / ma20 * 100
+
+                    # 量能：近5日均量 vs 近20日均量
+                    vol_5 = sum(volumes[-5:]) / 5 if len(volumes) >= 5 else 0
+                    vol_20 = sum(volumes[-20:]) / 20 if len(volumes) >= 20 else 0
+                    vol_ratio = vol_5 / vol_20 if vol_20 > 0 else 1
+
+                    # 评分 (0-100)
+                    score = 0
+                    # MA20斜率 (25分)
+                    score += min(25, max(0, ma20_slope * 10))
+                    # 回调深度 (25分) - 越贴近MA20越好
+                    if pullback_pct <= 3:
+                        score += 25
+                    elif pullback_pct <= 6:
+                        score += 18
+                    elif pullback_pct <= 10:
+                        score += 10
+                    else:
+                        score += 3
+                    # MACD (20分)
+                    score += 20 if macd_ok else 5
+                    # 量能 (15分) - 缩量回调更好
+                    if vol_ratio < 0.8:
+                        score += 15
+                    elif vol_ratio < 1.2:
+                        score += 10
+                    else:
+                        score += 5
+                    # 均线紧密度 (15分)
+                    ma_spread = (ma5 - ma60) / ma60 * 100
+                    if ma_spread < 5:
+                        score += 15
+                    elif ma_spread < 10:
+                        score += 10
+                    else:
+                        score += 5
+
+                    return {
+                        'code': code,
+                        'name': stock_info['name'],
+                        'current_price': stock_info['current_price'],
+                        'change_percent': stock_info['change_percent'],
+                        'ma5': round(ma5, 2),
+                        'ma10': round(ma10, 2),
+                        'ma20': round(ma20, 2),
+                        'ma60': round(ma60, 2),
+                        'ma20_slope': round(ma20_slope, 2),
+                        'pullback_pct': round(pullback_pct, 2),
+                        'macd_ok': macd_ok,
+                        'vol_ratio': round(vol_ratio, 2),
+                        'score': round(score, 1),
+                    }
+                except Exception:
+                    return None
+
+            with ThreadPoolExecutor(max_workers=20) as executor:
+                futures = {executor.submit(scan_trend, s): s for s in candidates}
+                for future in as_completed(futures):
+                    try:
+                        result = future.result()
+                        if result:
+                            results.append(result)
+                    except Exception:
+                        pass
+
+            results.sort(key=lambda x: (-x['score'], -(x['change_percent'] or 0), x['code']))
+            print(f"[API] 趋势跟踪完成，候选{len(candidates)}只，命中{len(results)}只")
+
+            return jsonify({
+                'strategy': 'trend_following',
+                'description': '趋势跟踪：均线多头排列 + 回调不破MA20 + MACD零轴上方',
+                'count': len(results),
+                'scanned': len(candidates),
+                'stocks': results,
+            })
+        except Exception as e:
+            import traceback
+            print(f"[API] 趋势跟踪策略失败: {e}")
+            traceback.print_exc()
+            return jsonify({'error': '趋势跟踪策略失败', 'message': str(e)}), 500
+
+    # ==================== 突破策略 ====================
+    @app.route('/api/strategy/breakout')
+    def get_breakout():
+        """突破策略：平台突破 + 放量确认"""
+        try:
+            print("[API] 开始突破策略扫描...")
+
+            SINA_HEADERS = {'User-Agent': 'Mozilla/5.0', 'Referer': 'http://finance.sina.com.cn'}
+            SINA_URL = 'http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData'
+            PAGE_SIZE = 200
+
+            def _fetch_node2(node):
+                rows = []
+                page = 1
+                while page <= 60:
+                    try:
+                        resp = requests.get(SINA_URL, params={
+                            'page': page, 'num': PAGE_SIZE, 'sort': 'symbol', 'asc': 1,
+                            'node': node, 'symbol': '', '_s_r_a': 'initlen',
+                        }, headers=SINA_HEADERS, timeout=10)
+                        resp.raise_for_status()
+                        data = resp.json() if resp.text.strip() else []
+                        if not data:
+                            break
+                        rows.extend(data)
+                        if len(data) < PAGE_SIZE:
+                            break
+                        page += 1
+                    except Exception:
+                        break
+                return rows
+
+            all_rows = []
+            with ThreadPoolExecutor(max_workers=3) as pool:
+                futures = {pool.submit(_fetch_node2, n): n for n in ['sh_a', 'sz_a', 'cyb']}
+                for fut in as_completed(futures):
+                    try:
+                        all_rows.extend(fut.result())
+                    except Exception:
+                        pass
+            print(f"[API] 突破策略: 获取行情 {len(all_rows)} 只")
+
+            candidates = []
+            for row in all_rows:
+                code = str(row.get('code', '')).strip().zfill(6)
+                name = str(row.get('name', '')).strip()
+                if not (code.startswith('60') or code.startswith('00')):
+                    continue
+                if 'ST' in name.upper() or '退' in name:
+                    continue
+                try:
+                    price = float(row.get('trade', 0))
+                    chg = float(row.get('changepercent', 0))
+                except Exception:
+                    continue
+                if price < 2 or price > 200:
+                    continue
+                if chg <= 0:  # 突破日必须上涨
+                    continue
+                candidates.append({'code': code, 'name': name, 'current_price': price, 'change_percent': chg})
+            print(f"[API] 突破策略: 候选池 {len(candidates)} 只")
+
+            results = []
+
+            def scan_breakout(stock_info):
+                code = stock_info['code']
+                try:
+                    df = get_daily_kline(code, count=80)
+                    if df is None or len(df) < 25:
+                        return None
+                    closes = df['close'].tolist()
+                    highs = df['high'].tolist()
+                    lows = df['low'].tolist()
+                    volumes = df['volume'].tolist()
+
+                    # 20日平台识别（排除今日）
+                    platform_highs = highs[-21:-1]
+                    platform_lows = lows[-21:-1]
+                    platform_vols = volumes[-21:-1]
+
+                    if len(platform_highs) < 20:
+                        return None
+
+                    platform_high = max(platform_highs)
+                    platform_low = min(platform_lows)
+                    platform_avg_vol = sum(platform_vols) / len(platform_vols)
+
+                    # 平台振幅
+                    amplitude = (platform_high - platform_low) / platform_low * 100 if platform_low > 0 else 999
+
+                    # 平台振幅必须 < 20%（紧凑平台）
+                    if amplitude >= 20:
+                        return None
+
+                    # 今日收盘必须突破平台上沿
+                    today_close = closes[-1]
+                    if today_close <= platform_high:
+                        return None
+
+                    # 放量确认：今日成交量 / 平台均量 >= 1.3
+                    today_vol = volumes[-1]
+                    vol_surge = today_vol / platform_avg_vol if platform_avg_vol > 0 else 0
+                    if vol_surge < 1.3:
+                        return None
+
+                    # MA20向上
+                    ma20 = sum(closes[-20:]) / 20
+                    ma20_prev = sum(closes[-25:-5]) / 20
+                    ma20_up = ma20 > ma20_prev
+
+                    # 突破幅度
+                    breakout_pct = (today_close - platform_high) / platform_high * 100
+
+                    # 评分 (0-100)
+                    score = 0
+                    # 放量程度 (30分)
+                    if vol_surge >= 3:
+                        score += 30
+                    elif vol_surge >= 2:
+                        score += 24
+                    elif vol_surge >= 1.5:
+                        score += 18
+                    else:
+                        score += 10
+                    # 平台质量 (25分) - 振幅越小越好
+                    if amplitude < 8:
+                        score += 25
+                    elif amplitude < 12:
+                        score += 18
+                    elif amplitude < 16:
+                        score += 12
+                    else:
+                        score += 6
+                    # 突破幅度 (20分)
+                    if breakout_pct >= 5:
+                        score += 20
+                    elif breakout_pct >= 3:
+                        score += 15
+                    elif breakout_pct >= 1:
+                        score += 10
+                    else:
+                        score += 5
+                    # MA20方向 (15分)
+                    score += 15 if ma20_up else 3
+                    # 今日涨幅 (10分)
+                    chg = stock_info['change_percent']
+                    if chg >= 7:
+                        score += 10
+                    elif chg >= 4:
+                        score += 7
+                    elif chg >= 2:
+                        score += 4
+                    else:
+                        score += 2
+
+                    return {
+                        'code': code,
+                        'name': stock_info['name'],
+                        'current_price': stock_info['current_price'],
+                        'change_percent': stock_info['change_percent'],
+                        'platform_high': round(platform_high, 2),
+                        'platform_low': round(platform_low, 2),
+                        'amplitude': round(amplitude, 1),
+                        'breakout_pct': round(breakout_pct, 2),
+                        'vol_surge': round(vol_surge, 2),
+                        'ma20_up': ma20_up,
+                        'score': round(score, 1),
+                    }
+                except Exception:
+                    return None
+
+            with ThreadPoolExecutor(max_workers=20) as executor:
+                futures = {executor.submit(scan_breakout, s): s for s in candidates}
+                for future in as_completed(futures):
+                    try:
+                        result = future.result()
+                        if result:
+                            results.append(result)
+                    except Exception:
+                        pass
+
+            results.sort(key=lambda x: (-x['score'], -(x['change_percent'] or 0), x['code']))
+            print(f"[API] 突破策略完成，候选{len(candidates)}只，命中{len(results)}只")
+
+            return jsonify({
+                'strategy': 'breakout',
+                'description': '突破策略：20日平台突破 + 放量确认 + MA20向上',
+                'count': len(results),
+                'scanned': len(candidates),
+                'stocks': results,
+            })
+        except Exception as e:
+            import traceback
+            print(f"[API] 突破策略失败: {e}")
+            traceback.print_exc()
+            return jsonify({'error': '突破策略失败', 'message': str(e)}), 500
 
     @app.route('/api/auction/sectors')
     def get_auction_sectors():

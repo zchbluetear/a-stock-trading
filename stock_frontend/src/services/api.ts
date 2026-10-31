@@ -447,6 +447,14 @@ class StockAPI {
     return this.request(`/api/strategy/nine_turn`);
   }
 
+  async getTrendFollowing(): Promise<any> {
+    return this.request(`/api/strategy/trend_following`);
+  }
+
+  async getBreakout(): Promise<any> {
+    return this.request(`/api/strategy/breakout`);
+  }
+
   async getIntradayNineTurn(): Promise<any> {
     return this.request(`/api/strategy/intraday_nine_turn`);
   }
