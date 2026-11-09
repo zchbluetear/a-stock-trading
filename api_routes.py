@@ -30,7 +30,8 @@ from db import (
     create_trading_log, get_trading_logs, get_trading_log, update_trading_log, delete_trading_log,
     create_trade_action, get_trade_actions, delete_trade_action, recalculate_log_summary,
     create_trade_tag, get_trade_tags, delete_trade_tag,
-    add_log_tag, remove_log_tag, get_log_tags, get_trading_log_statistics
+    add_log_tag, remove_log_tag, get_log_tags, get_trading_log_statistics,
+    get_journal, upsert_journal, list_journals, delete_journal
 )
 from ai_service import AIService
 
@@ -3768,5 +3769,111 @@ def register_routes(app):
         try:
             tags = get_log_tags(db, log_id)
             return jsonify([{'id': t.id, 'name': t.name, 'color': t.color} for t in tags])
+        finally:
+            db.close()
+
+    # ==================== 每日手记（盘前计划 / 盘后总结） ====================
+
+    JOURNAL_TYPES = {'plan', 'review'}
+    JOURNAL_MAX_LEN = 500
+
+    def _valid_journal_date(d):
+        from datetime import datetime as _dt
+        try:
+            _dt.strptime(d, '%Y-%m-%d')
+            return True
+        except (ValueError, TypeError):
+            return False
+
+    def _journal_to_dict(j):
+        return {
+            'id': j.id,
+            'journal_type': j.journal_type,
+            'date': j.date,
+            'content': j.content or '',
+            'created_at': j.created_at.strftime('%Y-%m-%d %H:%M:%S') if j.created_at else None,
+            'updated_at': j.updated_at.strftime('%Y-%m-%d %H:%M:%S') if j.updated_at else None,
+        }
+
+    @app.route('/api/journals', methods=['GET'])
+    def list_journals_api():
+        """分页查询手记历史，按日期倒序"""
+        db = next(get_db())
+        try:
+            journal_type = request.args.get('type')
+            if journal_type and journal_type not in JOURNAL_TYPES:
+                return jsonify({'success': False, 'error': 'type 只能是 plan 或 review'}), 400
+            try:
+                page = max(1, int(request.args.get('page', 1)))
+                per_page = min(100, max(1, int(request.args.get('per_page', 30))))
+            except ValueError:
+                return jsonify({'success': False, 'error': 'page / per_page 必须是整数'}), 400
+            items, total = list_journals(db, journal_type=journal_type,
+                                         page=page, per_page=per_page)
+            return jsonify({
+                'items': [_journal_to_dict(i) for i in items],
+                'total': total, 'page': page, 'per_page': per_page
+            })
+        finally:
+            db.close()
+
+    @app.route('/api/journals/<journal_type>/<date>', methods=['GET'])
+    def get_journal_api(journal_type, date):
+        """获取某天某类型的手记，不存在则返回空草稿"""
+        if journal_type not in JOURNAL_TYPES:
+            return jsonify({'success': False, 'error': 'type 只能是 plan 或 review'}), 400
+        if not _valid_journal_date(date):
+            return jsonify({'success': False, 'error': 'date 格式必须是 YYYY-MM-DD'}), 400
+        db = next(get_db())
+        try:
+            j = get_journal(db, journal_type, date)
+            if j:
+                data = _journal_to_dict(j)
+                data['exists'] = True
+            else:
+                data = {'journal_type': journal_type, 'date': date,
+                        'content': '', 'exists': False}
+            return jsonify({'success': True, 'data': data})
+        finally:
+            db.close()
+
+    @app.route('/api/journals/<journal_type>/<date>', methods=['PUT'])
+    def save_journal_api(journal_type, date):
+        """保存手记，同 (type, date) 已存在则更新"""
+        if journal_type not in JOURNAL_TYPES:
+            return jsonify({'success': False, 'error': 'type 只能是 plan 或 review'}), 400
+        if not _valid_journal_date(date):
+            return jsonify({'success': False, 'error': 'date 格式必须是 YYYY-MM-DD'}), 400
+        data = request.get_json(silent=True)
+        # 解析失败或缺 content 字段时直接报错，避免把已有内容静默清空
+        # （content 允许为空字符串，那是用户主动清空，与请求畸形是两回事）
+        if not isinstance(data, dict) or 'content' not in data:
+            return jsonify({'success': False,
+                            'error': '请求体必须是包含 content 字段的 JSON'}), 400
+        content = (data.get('content') or '').strip()
+        if len(content) > JOURNAL_MAX_LEN:
+            return jsonify({'success': False,
+                            'error': f'内容不能超过 {JOURNAL_MAX_LEN} 字'}), 400
+        db = next(get_db())
+        try:
+            j = upsert_journal(db, journal_type, date, content)
+            return jsonify({'success': True, 'data': _journal_to_dict(j)})
+        except Exception as e:
+            print(f"[API] 保存手记失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+        finally:
+            db.close()
+
+    @app.route('/api/journals/<int:journal_id>', methods=['DELETE'])
+    def delete_journal_api(journal_id):
+        """删除手记"""
+        db = next(get_db())
+        try:
+            if not delete_journal(db, journal_id):
+                return jsonify({'success': False, 'error': '手记不存在'}), 404
+            return jsonify({'success': True})
+        except Exception as e:
+            print(f"[API] 删除手记失败: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
         finally:
             db.close()

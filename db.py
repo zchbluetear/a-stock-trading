@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """数据库操作函数"""
 
-from models import SessionLocal, Watchlist, Config, Agent, AnalysisCache, DebateJob, VolumePrediction, TradingLog, TradeAction, TradeTag, TradingLogTag
+from models import SessionLocal, Watchlist, Config, Agent, AnalysisCache, DebateJob, VolumePrediction, TradingLog, TradeAction, TradeTag, TradingLogTag, DailyJournal
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import json
@@ -657,4 +657,45 @@ def _empty_stats():
         'max_single_loss': 0, 'max_single_loss_name': '',
         'avg_holding_days': 0
     }
+
+# ==================== 每日手记操作（盘前计划 / 盘后总结） ====================
+
+def get_journal(db: Session, journal_type: str, date: str):
+    """获取指定日期、指定类型的手记，不存在返回 None"""
+    return db.query(DailyJournal).filter(
+        DailyJournal.journal_type == journal_type,
+        DailyJournal.date == date
+    ).first()
+
+def upsert_journal(db: Session, journal_type: str, date: str, content: str):
+    """保存手记：同 (journal_type, date) 已存在则更新，否则新建"""
+    journal = get_journal(db, journal_type, date)
+    if journal:
+        journal.content = content
+        journal.updated_at = datetime.now()
+    else:
+        journal = DailyJournal(journal_type=journal_type, date=date, content=content)
+        db.add(journal)
+    db.commit()
+    db.refresh(journal)
+    return journal
+
+def list_journals(db: Session, journal_type: str = None, page: int = 1, per_page: int = 30):
+    """分页查询手记历史，按日期倒序"""
+    query = db.query(DailyJournal)
+    if journal_type:
+        query = query.filter(DailyJournal.journal_type == journal_type)
+    total = query.count()
+    items = query.order_by(DailyJournal.date.desc()) \
+                 .offset((page - 1) * per_page).limit(per_page).all()
+    return items, total
+
+def delete_journal(db: Session, journal_id: int):
+    """删除手记"""
+    journal = db.query(DailyJournal).filter(DailyJournal.id == journal_id).first()
+    if journal:
+        db.delete(journal)
+        db.commit()
+        return True
+    return False
 

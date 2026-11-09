@@ -11,11 +11,13 @@ export default function Layout({ children }: LayoutProps) {
   const navItems = [
     { path: '/', label: '市场概览' },
     { path: '/sectors', label: '板块强度' },
-    { path: '/auction', label: '涨停池' },
-    { path: '/watchlist', label: '自选' },
-    { path: '/trading-logs', label: '交易记录' },
+    { path: '/auction', label: '涨停列表' },
+    { path: '/watchlist', label: '自选列表' },
     { path: '/strategy', label: '策略中心' },
     { path: '/tasks', label: 'AI中心' },
+    { path: '/premarket-plan', label: '盘前计划' },
+    { path: '/trading-logs', label: '交易记录' },
+    { path: '/postmarket-summary', label: '盘后总结' },
   ];
 
   return (

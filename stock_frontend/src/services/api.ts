@@ -172,6 +172,21 @@ export interface TradingLog {
   updated_at: string;
 }
 
+export type JournalType = 'plan' | 'review';
+
+export interface Journal {
+  id?: number;
+  journal_type: JournalType;
+  date: string;
+  content: string;
+  exists?: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+/** 手记内容字数上限，与后端 api_routes.py 的 JOURNAL_MAX_LEN 保持一致 */
+export const JOURNAL_MAX_LEN = 500;
+
 export interface SentimentData {
   summary: {
     date: string;
@@ -667,6 +682,38 @@ class StockAPI {
 
   async getLogTags(logId: number): Promise<TradeTag[]> {
     return this.request(`/api/trading-logs/${logId}/tags`);
+  }
+
+  // ==================== 每日手记（盘前计划 / 盘后总结） ====================
+
+  async getJournal(type: JournalType, date: string): Promise<Journal> {
+    const data = await this.request<{ success: boolean; data: Journal }>(
+      `/api/journals/${type}/${date}`
+    );
+    return data.data;
+  }
+
+  async saveJournal(type: JournalType, date: string, content: string): Promise<Journal> {
+    const data = await this.request<{ success: boolean; data: Journal; error?: string }>(
+      `/api/journals/${type}/${date}`,
+      { method: 'PUT', body: JSON.stringify({ content }) }
+    );
+    if (!data.success) throw new Error(data.error || '保存失败');
+    return data.data;
+  }
+
+  async listJournals(
+    type?: JournalType,
+    page = 1,
+    perPage = 30
+  ): Promise<{ items: Journal[]; total: number; page: number; per_page: number }> {
+    const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
+    if (type) params.set('type', type);
+    return this.request(`/api/journals?${params.toString()}`);
+  }
+
+  async deleteJournal(id: number): Promise<{ success: boolean }> {
+    return this.request(`/api/journals/${id}`, { method: 'DELETE' });
   }
 }
 

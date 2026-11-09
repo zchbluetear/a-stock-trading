@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """数据库模型定义"""
 
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, Text, DateTime, Float, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, Text, DateTime, Float, ForeignKey, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -144,6 +144,21 @@ class VolumePrediction(Base):
     
     __table_args__ = (
         {'sqlite_autoincrement': True},
+    )
+
+class DailyJournal(Base):
+    """每日手记表：盘前计划 / 盘后总结，一天一篇"""
+    __tablename__ = 'daily_journals'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    journal_type = Column(String(10), nullable=False, index=True)  # 'plan'=盘前计划, 'review'=盘后总结
+    date = Column(String(10), nullable=False, index=True)          # YYYY-MM-DD
+    content = Column(Text, default='')
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('journal_type', 'date', name='uq_journal_type_date'),
     )
 
 # 数据库初始化

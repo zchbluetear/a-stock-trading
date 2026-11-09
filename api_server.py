@@ -44,10 +44,56 @@ def start_monitor_service():
     except Exception as e:
         print(f"[初始化] 监控服务启动失败: {e}")
 
+def remind_journal(journal_type: str, date: str):
+    """
+    手记填写提醒：当天内容已填写则跳过，未填写才推送 PushPlus。
+    journal_type: 'plan'=盘前计划, 'review'=盘后总结
+    """
+    from models import SessionLocal
+    from db import get_journal
+    from notification import send_wechat_notification
+
+    label = '盘前计划' if journal_type == 'plan' else '盘后总结'
+
+    db = SessionLocal()
+    try:
+        journal = get_journal(db, journal_type, date)
+        filled = bool(journal and (journal.content or '').strip())
+    finally:
+        db.close()
+
+    if filled:
+        print(f"[Scheduler] {date} 的{label}已填写，跳过提醒")
+        return
+
+    if journal_type == 'plan':
+        body = (f'<p>今天是 <b>{date}</b>，还没写盘前计划。</p>'
+                '<p>开盘前花几分钟写下：</p>'
+                '<ul><li>大盘预判与今日仓位上限</li>'
+                '<li>重点关注的标的及买点</li>'
+                '<li>止损位与止盈目标</li>'
+                '<li>今天坚决不做什么（纪律）</li></ul>')
+    else:
+        body = (f'<p>今天是 <b>{date}</b>，还没写盘后总结。</p>'
+                '<p>收盘后回顾一下：</p>'
+                '<ul><li>今天做对了什么</li>'
+                '<li>哪里偏离了盘前计划</li>'
+                '<li>当时的情绪与心态</li>'
+                '<li>明天要改进的一件事</li></ul>')
+
+    result = send_wechat_notification(f'{label}提醒', body, template='html')
+    if result.get('success'):
+        print(f"[Scheduler] 已推送{label}提醒（{date}）")
+    else:
+        print(f"[Scheduler] {label}提醒推送未成功: {result.get('message')}")
+
+
 def start_scheduler_service():
     """
     启动定时任务服务
-    功能：交易时段每15秒扫描自选股1分钟分时9转信号并推送PushPlus
+    功能：
+      1. 交易时段每15秒扫描自选股1分钟分时9转信号并推送PushPlus
+      2. 每日 08:00 后提醒填写盘前计划（交易日），20:00 后提醒填写盘后总结（周一至周六）
     """
     try:
         import threading
@@ -59,10 +105,13 @@ def start_scheduler_service():
         if os.environ.get('WERKZEUG_RUN_MAIN') != 'true' and app.debug:
             return
 
-        state = {'last_nine_turn_time': None}
+        state = {'last_nine_turn_time': None,
+                 'last_plan_remind': None,
+                 'last_review_remind': None}
 
         def _scheduler_loop():
-            print("[Scheduler] 守护线程定时服务已启动：交易时段每15秒分时9转推送")
+            print("[Scheduler] 守护线程定时服务已启动：交易时段每15秒分时9转推送；"
+                  "08:00 盘前计划提醒、20:00 盘后总结提醒")
             while True:
                 try:
                     now = datetime.now()
@@ -83,6 +132,25 @@ def start_scheduler_service():
                             except Exception as e:
                                 print(f"[Scheduler] 分时9转推送任务执行异常: {e}")
                             state['last_nine_turn_time'] = datetime.now()
+
+                    # 手记填写提醒。用 >= 而非 == 比较时刻，服务器若在提醒时刻之后
+                    # 才启动，当天仍会补推一次；state 存日期字符串保证一天只推一次。
+                    today = now.strftime('%Y-%m-%d')
+
+                    if weekday < 5 and current_hm >= (8, 0) and state['last_plan_remind'] != today:
+                        # 先置位再推送：推送失败也不要每秒重试刷屏
+                        state['last_plan_remind'] = today
+                        try:
+                            remind_journal('plan', today)
+                        except Exception as e:
+                            print(f"[Scheduler] 盘前计划提醒异常: {e}")
+
+                    if weekday < 6 and current_hm >= (20, 0) and state['last_review_remind'] != today:
+                        state['last_review_remind'] = today
+                        try:
+                            remind_journal('review', today)
+                        except Exception as e:
+                            print(f"[Scheduler] 盘后总结提醒异常: {e}")
 
                 except Exception as e:
                     print(f"[Scheduler] 定时循环异常: {e}")
