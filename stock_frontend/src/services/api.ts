@@ -470,6 +470,10 @@ class StockAPI {
     return this.request(`/api/strategy/breakout`);
   }
 
+  async getNShapeStart(): Promise<any> {
+    return this.request(`/api/strategy/n_shape_start`);
+  }
+
   async getIntradayNineTurn(): Promise<any> {
     return this.request(`/api/strategy/intraday_nine_turn`);
   }

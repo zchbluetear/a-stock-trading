@@ -97,9 +97,24 @@ interface BreakoutStock {
   score: number;
 }
 
-type StrategyTab = 'strong_stocks' | 'nine_turn' | 'trend_following' | 'breakout';
+interface NShapeStock {
+  code: string;
+  name: string;
+  current_price: number;
+  change_percent: number;
+  first_limit_up_date: string;
+  first_limit_up_pct: number;
+  middle_days: number;
+  middle_low: number;
+  first_limit_up_low: number;
+  middle_volume_ratio: number;
+  second_start_pct: number;
+}
+
+type StrategyTab = 'n_shape' | 'strong_stocks' | 'nine_turn' | 'trend_following' | 'breakout';
 
 const STRATEGY_TABS: { key: StrategyTab; label: string }[] = [
+  { key: 'n_shape', label: 'N形启动' },
   { key: 'strong_stocks', label: '二板分歧' },
   { key: 'nine_turn', label: '九九归一' },
   { key: 'trend_following', label: '趋势跟踪' },
@@ -112,7 +127,7 @@ const TIME_OPTIONS = [
 ];
 
 export default function Strategy() {
-  const [strategyType, setStrategyType] = useState<StrategyTab>('strong_stocks');
+  const [strategyType, setStrategyType] = useState<StrategyTab>('n_shape');
   const [limitTime, setLimitTime] = useState('11:30');
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [showMultiModal, setShowMultiModal] = useState(false);
@@ -127,6 +142,22 @@ export default function Strategy() {
   const isNineTurn = strategyType === 'nine_turn';
   const isTrend = strategyType === 'trend_following';
   const isBreakout = strategyType === 'breakout';
+  const isNShape = strategyType === 'n_shape';
+
+  const {
+    data: nShapeData,
+    isLoading: nShapeLoading,
+    error: nShapeError,
+    refetch: nShapeRefetch,
+    isFetching: nShapeIsFetching,
+    dataUpdatedAt: nShapeUpdatedAt,
+  } = useQuery<{ strategy: string; description: string; count: number; scanned: number; stocks: NShapeStock[] }>({
+    queryKey: ['n-shape-start'],
+    queryFn: () => stockAPI.getNShapeStart(),
+    enabled: isNShape,
+    refetchInterval: isNShape ? 120000 : false,
+    staleTime: 120000,
+  });
 
   const { data, isLoading, error, refetch, isFetching } = useQuery<StrongStocksResponse>({
     queryKey: ['strong-stocks', limitTime],
@@ -181,6 +212,8 @@ export default function Strategy() {
     refetchInterval: isBreakout ? 120000 : false,
     staleTime: 120000,
   });
+
+  const strategyIsFetching = isStrongStocks ? isFetching : isNineTurn ? nineIsFetching : isTrend ? trendIsFetching : isBreakout ? breakoutIsFetching : nShapeIsFetching;
 
   const { data: agents, isLoading: agentsLoading } = useQuery({
     queryKey: ['agents', 'enabled'],
@@ -302,6 +335,7 @@ export default function Strategy() {
           {isNineTurn && nineData && <span className="text-xs font-normal text-gray-500 dark:text-gray-400 sm:text-sm">共{nineData.count}只</span>}
           {isTrend && trendData && <span className="text-xs font-normal text-gray-500 dark:text-gray-400 sm:text-sm">共{trendData.count}只</span>}
           {isBreakout && breakoutData && <span className="text-xs font-normal text-gray-500 dark:text-gray-400 sm:text-sm">共{breakoutData.count}只</span>}
+          {isNShape && nShapeData && <span className="text-xs font-normal text-gray-500 dark:text-gray-400 sm:text-sm">共{nShapeData.count}只</span>}
         </h2>
         <div className="flex min-w-0 shrink-0 flex-nowrap items-center gap-1 sm:gap-3">
           {isStrongStocks && (
@@ -342,25 +376,70 @@ export default function Strategy() {
               更新于 {new Date(breakoutUpdatedAt).toLocaleTimeString('zh-CN', { hour12: false })}
             </span>
           )}
+          {isNShape && nShapeUpdatedAt > 0 && (
+            <span className="shrink-0 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+              更新于 {new Date(nShapeUpdatedAt).toLocaleTimeString('zh-CN', { hour12: false })}
+            </span>
+          )}
           <button
             onClick={() => {
               if (isStrongStocks) refetch();
               else if (isNineTurn) nineRefetch();
               else if (isTrend) trendRefetch();
-              else breakoutRefetch();
+              else if (isBreakout) breakoutRefetch();
+              else nShapeRefetch();
             }}
-            disabled={isStrongStocks ? isFetching : isNineTurn ? nineIsFetching : isTrend ? trendIsFetching : breakoutIsFetching}
+            disabled={strategyIsFetching}
             className="flex shrink-0 items-center gap-1 rounded-lg bg-blue-600 px-2 py-1.5 text-sm text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:gap-2 sm:px-4 sm:py-2"
           >
-            <svg className={`h-4 w-4 sm:h-5 sm:w-5 ${(isStrongStocks ? isFetching : isNineTurn ? nineIsFetching : isTrend ? trendIsFetching : breakoutIsFetching) ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className={`h-4 w-4 sm:h-5 sm:w-5 ${strategyIsFetching ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            <span className="sm:hidden">{(isStrongStocks ? isFetching : isNineTurn ? nineIsFetching : isTrend ? trendIsFetching : breakoutIsFetching) ? '刷新中' : '刷新'}</span>
-            <span className="hidden sm:inline">{(isStrongStocks ? isFetching : isNineTurn ? nineIsFetching : isTrend ? trendIsFetching : breakoutIsFetching) ? '刷新中...' : '刷新'}</span>
+            <span className="sm:hidden">{strategyIsFetching ? '刷新中' : '刷新'}</span>
+            <span className="hidden sm:inline">{strategyIsFetching ? '刷新中...' : '刷新'}</span>
           </button>
         </div>
         </div>
       </div>
+
+      {isNShape && (
+        nShapeLoading ? <div className="flex justify-center py-12"><LoadingSpinner size="large" /></div>
+          : nShapeError ? <div className="text-center py-12 text-red-500">加载失败: {(nShapeError as Error).message}</div>
+            : !nShapeData || nShapeData.stocks.length === 0 ? (
+              <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <p className="text-gray-500 dark:text-gray-400">暂无符合N形启动条件的股票</p>
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow">
+                <p className="px-3 pt-3 mb-2 text-xs text-gray-500 dark:text-gray-400">首板实际涨停后缩量整理 3–5 个交易日（每个整理日成交量均低于首板日，每日涨跌幅 -2.5% 至 +2.5%），期间最低价不低于首板最低价，二次启动日涨幅达到 5%（含 5%）。</p>
+                <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="N形启动选股结果">
+                  <table className="min-w-full whitespace-nowrap divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-900"><tr>
+                      {['名称', '当前价', '首板日期', '首板涨幅', '整理天数', '整理最低价 / 首板最低价', '整理均量 / 首板成交量', '二次启动涨幅', '操作'].map((label) => <th key={label} className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{label}</th>)}
+                    </tr></thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {nShapeData.stocks.map((stock) => <tr key={stock.code} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td className="px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white">{stock.name} <span className={stock.change_percent >= 0 ? 'text-red-600' : 'text-green-600'}>{stock.change_percent >= 0 ? '+' : ''}{stock.change_percent.toFixed(2)}%</span></td>
+                        <td className="px-4 py-2.5 text-sm text-gray-900 dark:text-white">{stock.current_price.toFixed(2)}</td>
+                        <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">{stock.first_limit_up_date || '-'}</td>
+                        <td className="px-4 py-2.5 text-sm text-red-600 dark:text-red-400">+{stock.first_limit_up_pct.toFixed(2)}%</td>
+                        <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">{stock.middle_days} 天</td>
+                        <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">{stock.middle_low.toFixed(2)} / {stock.first_limit_up_low.toFixed(2)}</td>
+                        <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">{stock.middle_volume_ratio.toFixed(2)}x</td>
+                        <td className="px-4 py-2.5 text-sm font-semibold text-red-600 dark:text-red-400">+{stock.second_start_pct.toFixed(2)}%</td>
+                        <td className="px-4 py-2.5 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Link to={`/stock/${stock.code}`} className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">详情</Link>
+                            <button onClick={() => handleAddWatchlist(stock.code, stock.name)} disabled={addingMap[stock.code] || addedMap[stock.code]} className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50">{addedMap[stock.code] ? '已加入' : addingMap[stock.code] ? '加入中' : '加入自选'}</button>
+                          </div>
+                        </td>
+                      </tr>)}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+      )}
 
       {/* 二板分歧策略 - 股票列表 */}
       {isStrongStocks && (
@@ -576,7 +655,7 @@ export default function Strategy() {
       {/* 趋势跟踪 - 股票列表 */}
       {isTrend && (
         trendLoading ? (
-          <div className="flex justify-center py-12"><LoadingSpinner text="扫描趋势股..." /></div>
+          <div className="flex flex-col items-center justify-center py-12"><LoadingSpinner size="large" /><p className="mt-3 text-sm text-gray-500 dark:text-gray-400">扫描趋势股...</p></div>
         ) : trendError ? (
           <div className="text-center py-12 text-red-500">加载失败: {(trendError as Error).message}</div>
         ) : !trendData || trendData.stocks.length === 0 ? (
@@ -651,7 +730,7 @@ export default function Strategy() {
       {/* 突破策略 - 股票列表 */}
       {isBreakout && (
         breakoutLoading ? (
-          <div className="flex justify-center py-12"><LoadingSpinner text="扫描突破股..." /></div>
+          <div className="flex flex-col items-center justify-center py-12"><LoadingSpinner size="large" /><p className="mt-3 text-sm text-gray-500 dark:text-gray-400">扫描突破股...</p></div>
         ) : breakoutError ? (
           <div className="text-center py-12 text-red-500">加载失败: {(breakoutError as Error).message}</div>
         ) : !breakoutData || breakoutData.stocks.length === 0 ? (

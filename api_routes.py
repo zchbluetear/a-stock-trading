@@ -3023,6 +3023,183 @@ def register_routes(app):
             traceback.print_exc()
             return jsonify({'error': '趋势跟踪策略失败', 'message': str(e)}), 500
 
+    # ==================== N形启动策略 ====================
+    @app.route('/api/strategy/n_shape_start')
+    def get_n_shape_start():
+        """N形启动：首板涨停，3–5日整理且不破首板最低价，二次启动涨幅达到5%。"""
+        try:
+            print("[API] 开始N形启动策略扫描...")
+            sina_url = 'http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData'
+            headers = {'User-Agent': 'Mozilla/5.0', 'Referer': 'http://finance.sina.com.cn'}
+
+            def fetch_node(node):
+                rows, page = [], 1
+                page_size = 100
+                while page <= 60:
+                    try:
+                        resp = requests.get(sina_url, params={
+                            'page': page, 'num': page_size, 'sort': 'symbol', 'asc': 1,
+                            'node': node, 'symbol': '', '_s_r_a': 'initlen',
+                        }, headers=headers, timeout=10)
+                        resp.raise_for_status()
+                        data = resp.json() if resp.text.strip() else []
+                        if not data:
+                            break
+                        rows.extend(data)
+                        if len(data) < page_size:
+                            break
+                        page += 1
+                    except Exception:
+                        break
+                return rows
+
+            rows = []
+            with ThreadPoolExecutor(max_workers=3) as pool:
+                futures = [pool.submit(fetch_node, node) for node in ('sh_a', 'sz_a', 'cyb')]
+                for future in as_completed(futures):
+                    try:
+                        rows.extend(future.result())
+                    except Exception:
+                        pass
+
+            # Nodes may overlap; de-duplicate by code before scanning.
+            rows_by_code = {str(row.get('code', '')).strip().zfill(6): row for row in rows if row.get('code')}
+            candidates = []
+            for row in rows_by_code.values():
+                code = str(row.get('code', '')).strip().zfill(6)
+                name = str(row.get('name', '')).strip()
+                if not (code.startswith(('60', '00', '30', '68'))) or '退' in name:
+                    continue
+                try:
+                    price, change = float(row.get('trade', 0)), float(row.get('changepercent', 0))
+                except (TypeError, ValueError):
+                    continue
+                if price > 0 and change >= 5:
+                    candidates.append({'code': code, 'name': name, 'current_price': price, 'change_percent': change})
+
+            results = []
+            scan_diagnostics = {
+                'no_daily_kline': 0,
+                'no_recent_limit_up': 0,
+                'middle_change_out_of_range': 0,
+                'middle_low_below_first_limit_up': 0,
+                'middle_volume_not_shrunk': 0,
+                'scan_error': 0,
+                'matched': 0,
+            }
+            diagnostics_lock = threading.Lock()
+
+            def scan_n_shape(stock):
+                try:
+                    df = get_daily_kline(stock['code'], count=60)
+                    if df is None or len(df) < 7:
+                        with diagnostics_lock:
+                            scan_diagnostics['no_daily_kline'] += 1
+                        return None
+                    closes = df['close'].astype(float).tolist()
+                    highs = df['high'].astype(float).tolist()
+                    lows = df['low'].astype(float).tolist()
+                    volumes = df['volume'].astype(float).tolist()
+                    n = len(closes)
+                    # 二次启动使用实时涨幅；日K末尾若是当天不完整K线，不纳入中间整理日。
+                    if stock['change_percent'] < 5:
+                        return None
+                    today = df['date'].iloc[-1].date() if 'date' in df.columns else None
+                    market_today = datetime.now().date()
+                    has_today_bar = today == market_today
+                    second_idx = n - 1 if has_today_bar else n
+
+                    # 依次匹配中间整理3、4、5个已完成交易日；按板块涨停幅度确认首板收盘封板。
+                    from decimal import Decimal, ROUND_HALF_UP
+                    if stock['code'].startswith(('30', '68')):
+                        limit_ratios = [Decimal('0.20')]
+                    elif 'ST' in stock['name'].upper():
+                        # 当前 ST 标记不一定与历史首板日一致，两种主板涨停幅度都核对。
+                        limit_ratios = [Decimal('0.05'), Decimal('0.10')]
+                    else:
+                        limit_ratios = [Decimal('0.10')]
+                    saw_limit_up = False
+                    saw_valid_middle_changes = False
+                    saw_valid_middle_low = False
+                    for middle_days in (3, 4, 5):
+                        first_idx = second_idx - middle_days - 1
+                        if first_idx < 1 or second_idx > n:
+                            continue
+                        first_change = (closes[first_idx] / closes[first_idx - 1] - 1) * 100 if closes[first_idx - 1] > 0 else 0
+                        limit_prices = [
+                            float((Decimal(str(closes[first_idx - 1])) * (Decimal('1') + ratio)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+                            for ratio in limit_ratios
+                        ]
+                        if not any(abs(closes[first_idx] - limit_price) <= 0.005 for limit_price in limit_prices):
+                            continue
+                        saw_limit_up = True
+
+                        middle_changes = [
+                            (closes[i] / closes[i - 1] - 1) * 100 if closes[i - 1] > 0 else 999
+                            for i in range(first_idx + 1, second_idx)
+                        ]
+                        if len(middle_changes) != middle_days or any(change < -2.5 or change > 2.5 for change in middle_changes):
+                            continue
+                        saw_valid_middle_changes = True
+                        middle_low = min(lows[first_idx + 1:second_idx])
+                        if middle_low < lows[first_idx]:
+                            continue
+                        saw_valid_middle_low = True
+                        middle_volumes = volumes[first_idx + 1:second_idx]
+                        middle_avg_volume = sum(middle_volumes) / middle_days
+                        if volumes[first_idx] <= 0 or any(volume >= volumes[first_idx] for volume in middle_volumes):
+                            continue
+
+                        with diagnostics_lock:
+                            scan_diagnostics['matched'] += 1
+                        return {
+                            'code': stock['code'], 'name': stock['name'],
+                            'current_price': stock['current_price'], 'change_percent': stock['change_percent'],
+                            'first_limit_up_date': str(df['date'].iloc[first_idx].date()) if 'date' in df.columns else '',
+                            'first_limit_up_pct': round(first_change, 2),
+                            'middle_days': middle_days,
+                            'middle_low': round(middle_low, 2),
+                            'first_limit_up_low': round(lows[first_idx], 2),
+                            'middle_volume_ratio': round(middle_avg_volume / volumes[first_idx], 2),
+                            'second_start_pct': round(stock['change_percent'], 2),
+                        }
+                    reason = (
+                        'middle_volume_not_shrunk' if saw_valid_middle_low else
+                        'middle_low_below_first_limit_up' if saw_valid_middle_changes else
+                        'middle_change_out_of_range' if saw_limit_up else
+                        'no_recent_limit_up'
+                    )
+                    with diagnostics_lock:
+                        scan_diagnostics[reason] += 1
+                    return None
+                except Exception:
+                    with diagnostics_lock:
+                        scan_diagnostics['scan_error'] += 1
+                    return None
+
+            with ThreadPoolExecutor(max_workers=20) as executor:
+                futures = [executor.submit(scan_n_shape, stock) for stock in candidates]
+                for future in as_completed(futures):
+                    try:
+                        result = future.result()
+                        if result:
+                            results.append(result)
+                    except Exception:
+                        pass
+
+            results.sort(key=lambda item: (-item['second_start_pct'], -item['first_limit_up_pct'], item['code']))
+            return jsonify({
+                'strategy': 'n_shape_start',
+                'description': '首板实际涨停；随后3–5个交易日缩量整理（每个整理日成交量均低于首板日），每日涨跌幅在-2.5%至+2.5%且最低价不低于首板最低价；第二次启动日涨幅达到5%',
+                'count': len(results), 'market_rows': len(rows_by_code),
+                'scanned': len(candidates), 'diagnostics': scan_diagnostics, 'stocks': results,
+            })
+        except Exception as e:
+            import traceback
+            print(f"[API] N形启动策略失败: {e}")
+            traceback.print_exc()
+            return jsonify({'error': 'N形启动策略失败', 'message': str(e)}), 500
+
     # ==================== 突破策略 ====================
     @app.route('/api/strategy/breakout')
     def get_breakout():
